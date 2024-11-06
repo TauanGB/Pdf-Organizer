@@ -23,6 +23,7 @@ class GerenciadorCategorias(ctk.CTkFrame):
 		self.btn_remover_subcategoria = ctk.CTkButton(self, text="-", command=self.remover_subcategoria, width=40)  # BT REMOVER SUBCATEGORIA
 		self.lista_categorias = Listbox(self, width=35, height=10, fg="black")  # LISTA DE CATEGORIAS
 		self.lista_categorias.bind("<<ListboxSelect>>", self.mostrar_detalhes)  # Binding para exibir detalhes
+		
 
 		# Layout
 		self.titulo.grid(row=0, column=1, columnspan=5, pady=10)  # TÍTULO
@@ -108,6 +109,7 @@ class GerenciadorCategorias(ctk.CTkFrame):
 		else:
 			messagebox.showerror("Erro", "A categoria especificada não existe.")
 
+
 	def atualizar_lista(self):
 		"""Atualiza a exibição de categorias e subcategorias na listbox."""
 		self.lista_categorias.delete(0, "end")
@@ -117,6 +119,7 @@ class GerenciadorCategorias(ctk.CTkFrame):
 				self.lista_categorias.insert("end", f"  - {sub} ({len(palavras_chave)} palavras-chave)")
 
 	def mostrar_detalhes(self, event):
+		#FIXME arrumar, limpar antes de colocar outro
 		"""Exibe detalhes da subcategoria selecionada no FrameDetalhes."""
 		selection = self.lista_categorias.curselection()
 		if selection:
@@ -130,6 +133,7 @@ class GerenciadorCategorias(ctk.CTkFrame):
 				self.frame_detalhes.mostrar_detalhes(categoria, subcategoria, self.categorias)
 
 class FrameDetalhes(ctk.CTkFrame):
+	#FIXME não ta adicionando palavra chave nem removendo
 	def __init__(self, parent):
 		super().__init__(parent)
 		self.label_detalhes = ctk.CTkLabel(self, text="Detalhes da Subcategoria")

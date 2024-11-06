@@ -108,24 +108,27 @@ class Cadastro(customtkinter.CTkFrame):
 	def ModfCadastCliente(self):
 		TmpNome = (self.EntryRSaCadastro.get()).upper().strip()
 		TmpNumeroIdentificacao = (self.EntryCNPJCadastro.get()).strip()
+		TmpNumero = self.EntryCNPJCadastro.get().replace(".", "").replace("-", "").replace("/", "")
 		self.AplicarCracteresESpeciaisEntry(None)
 		if self.Bt_voltar_Cadastro._state == 'disabled':
 			self.Bt_voltar_Cadastro.configure(state='normal')
 			self.Bt_AddAlterar.configure(text="Cadastrar",fg_color='green')
 
+		if len(TmpNumero) == 14 or len(TmpNumero) == 11 :
+			if TmpNumeroIdentificacao not in self.Clientes.keys():
+				self.EntryRSaCadastro.delete(0,"end")
+				self.EntryCNPJCadastro.delete(0,"end")
+				#criando label na lista
+				Client_Label(self,self.rightFrameCadastro,TmpNome,TmpNumeroIdentificacao)
+				#Escrevendo no banco temporario
+				self.Clientes[TmpNumeroIdentificacao] = TmpNome
 
-		if TmpNumeroIdentificacao not in self.Clientes.keys():
-			self.EntryRSaCadastro.delete(0,"end")
-			self.EntryCNPJCadastro.delete(0,"end")
-			#criando label na lista
-			Client_Label(self,self.rightFrameCadastro,TmpNome,TmpNumeroIdentificacao)
-			#Escrevendo no banco temporario
-			self.Clientes[TmpNumeroIdentificacao] = TmpNome
-
-			#Escrevendo no banco permanente
-			self.SalvarEmBancoClientes()
+				#Escrevendo no banco permanente
+				self.SalvarEmBancoClientes()
+			else:
+				messagebox.showwarning("Alerta","Este Cnpj ja esta cadastrado")
 		else:
-			messagebox.showwarning("Alerta","Este Cnpj ja esta cadastrado")
+			messagebox.showwarning("Alerta","Numeração de Cadastro incorreta, insira um CNPJ ou CPF")
 
 	def SalvarEmBancoClientes(self):
 		#Salvando permanentemente em Banco de dados de Clientes
@@ -239,6 +242,7 @@ class App:
 		self.frame_historico.pack()
 
 	def organizar(self):
+		#TODO adicionar função principal
 		self.Diretorio = askdirectory()
 		if not self.Diretorio:
 			return
