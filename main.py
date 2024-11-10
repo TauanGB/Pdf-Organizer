@@ -42,12 +42,230 @@ class Client_Label:
 		self.master.EntryCNPJCadastro.insert(0,self.CadPessoa)
 		self.Deletar()
 
+class GerenciadorCategorias(customtkinter.CTkFrame):
+	def __init__(self, parent, voltarMenu_callback):
+		super().__init__(parent)
+		
+		self.voltar_menu = voltarMenu_callback
+		self.create_widgets()
+
+	def create_widgets(self):
+		# Componentes principais
+		self.titulo = customtkinter.CTkLabel(self, text="Gerenciar Categorias e Subcategorias")  # Título
+		self.label_categoria = customtkinter.CTkLabel(self, text="Categoria (Pasta):")  # LABEL CATEGORIA
+		self.entrada_categoria = customtkinter.CTkEntry(self, width=200)  # ENTRY CATEGORIA
+		self.label_subcategoria = customtkinter.CTkLabel(self, text="Subcategoria (PDF):")  # LABEL SUBCATEGORIA
+		self.entrada_subcategoria = customtkinter.CTkEntry(self, width=200)  # ENTRY SUBCATEGORIA
+		self.btn_add_categoria = customtkinter.CTkButton(self, text="+", command=self.adicionar_categoria, width=40)  # BT ADICIONAR CATEGORIA
+		self.btn_add_subcategoria = customtkinter.CTkButton(self, text="+", command=self.adicionar_subcategoria, width=40)  # BT ADICIONAR SUBCATEGORIA
+		self.btn_remover_categoria = customtkinter.CTkButton(self, text="-", command=self.remover_categoria, width=40)  # BT REMOVER CATEGORIA
+		self.btn_remover_subcategoria = customtkinter.CTkButton(self, text="-", command=self.remover_subcategoria, width=40)  # BT REMOVER SUBCATEGORIA
+		self.lista_categorias = Listbox(self, width=35, height=10, fg="black")  # LISTA DE CATEGORIAS
+		self.lista_categorias.bind("<<ListboxSelect>>", self.mostrar_detalhes)  # Binding para exibir detalhes
+		
+		self.alerta = customtkinter.CTkLabel(self, text="FAVOR NÃO VOLTAR OU FECHAR A JANELA SEM SALVAR", text_color='red')  #ALERTA
+		self.btn_voltar = customtkinter.CTkButton(self, text="Voltar", command=self.voltar_menu, width=40)#FIXME BT PRA SALVAR AND VOLTAR ?
+
+
+		# Layout
+		self.titulo.grid(row=0, column=1, columnspan=5, pady=10)  # TÍTULO
+		self.label_categoria.grid(row=1, column=1, padx=10, pady=5, sticky="w")  # LABEL CATEGORIA
+		self.entrada_categoria.grid(row=1, column=2, padx=10, pady=5)  # ENTRY CATEGORIA
+		self.label_subcategoria.grid(row=2, column=1, padx=10, pady=5, sticky="w")  # LABEL SUBCATEGORIA
+		self.entrada_subcategoria.grid(row=2, column=2, padx=10, pady=5)  # ENTRY SUBCATEGORIA
+		self.btn_add_categoria.grid(row=1, column=5, padx=10, pady=10)  # BT ADICIONAR CATEGORIA
+		self.btn_add_subcategoria.grid(row=2, column=5, padx=10, pady=10)  # BT ADICIONAR SUBCATEGORIA
+		self.btn_remover_categoria.grid(row=1, column=6, padx=10, pady=10)  # BT REMOVER CATEGORIA
+		self.btn_remover_subcategoria.grid(row=2, column=6, padx=10, pady=10)  # BT REMOVER SUBCATEGORIA
+		self.lista_categorias.grid(row=3, column=1, columnspan=2, pady=10, sticky="nsew")  # LISTA CATEGORIAS
+		self.alerta.grid(row=4, column=1, padx=5,pady=5, sticky="nsew")  #ALERTA
+		self.btn_voltar.grid(row=4, column=6)
+		# Frame adicional à direita
+		self.frame_detalhes = FrameDetalhes(self)
+		self.frame_detalhes.grid(row=0, rowspan=4, column=0, padx=20, pady=10, sticky="nsew")
+		
+		# Dicionário para armazenar as categorias e subcategorias
+		self.categorias = {}
+		self.carregar_dados()
+
+	def carregar_dados(self):
+		"""Carrega as categorias e subcategorias de um arquivo JSON, se existir."""
+		if os.path.exists('estrutura.json'):
+			with open('estrutura.json', 'r') as file:
+				self.categorias = json.load(file)
+			self.atualizar_lista()
+
+	def salvar_dados(self):
+		"""Salva as categorias e subcategorias em um arquivo JSON."""
+		with open('estrutura.json', 'w') as file:
+			json.dump(self.categorias, file, indent=4)
+
+	def adicionar_categoria(self):
+		nome_categoria = self.entrada_categoria.get()
+		if nome_categoria:
+			if nome_categoria not in self.categorias:
+				self.categorias[nome_categoria] = {}  # Cada categoria contém um dicionário
+				self.atualizar_lista()
+				self.salvar_dados()
+			else:
+				messagebox.showwarning("Aviso", "Essa categoria já existe.")
+		else:
+			messagebox.showerror("Erro", "O nome da categoria não pode estar vazio.")
+
+	def adicionar_subcategoria(self):
+		nome_categoria = self.entrada_categoria.get()
+		nome_subcategoria = self.entrada_subcategoria.get()
+		if nome_categoria and nome_subcategoria:
+			if nome_categoria in self.categorias:
+				if nome_subcategoria not in self.categorias[nome_categoria]:
+					self.categorias[nome_categoria][nome_subcategoria] = []
+					self.atualizar_lista()
+					self.salvar_dados()
+					self.entrada_subcategoria.delete(0, "end")
+				else:
+					messagebox.showerror("Erro", "Essa SubCategoria Ja existe.")
+			else:
+				messagebox.showerror("Erro", "A categoria especificada não existe.")
+		else:
+			messagebox.showerror("Erro", "Os campos de categoria e subcategoria não podem estar vazios.")
+
+	def remover_categoria(self):
+		nome_categoria = self.entrada_categoria.get()
+		if nome_categoria in self.categorias:
+			del self.categorias[nome_categoria]
+			self.atualizar_lista()
+			self.salvar_dados()
+			self.entrada_categoria.delete(0, "end")
+			self.entrada_subcategoria.delete(0, "end")
+		else:
+			messagebox.showwarning("Aviso", "Categoria não encontrada.")
+
+	def remover_subcategoria(self):
+		nome_categoria = self.entrada_categoria.get()
+		nome_subcategoria = self.entrada_subcategoria.get()
+		if nome_categoria in self.categorias:
+			if nome_subcategoria in self.categorias[nome_categoria]:
+				del self.categorias[nome_categoria][nome_subcategoria]
+				self.atualizar_lista()
+				self.salvar_dados()
+				self.entrada_subcategoria.delete(0, "end")
+			else:
+				messagebox.showwarning("Aviso", "Subcategoria não encontrada.")
+		else:
+			messagebox.showerror("Erro", "A categoria especificada não existe.")
+
+
+	def atualizar_lista(self):
+		"""Atualiza a exibição de categorias e subcategorias na listbox."""
+		self.lista_categorias.delete(0, "end")
+		for categoria, subcategorias in self.categorias.items():
+			self.lista_categorias.insert("end", f"Categoria -- {categoria}")
+			for sub, palavras_chave in subcategorias.items():
+				self.lista_categorias.insert("end", f"  - {sub} ({len(palavras_chave)} palavras-chave)")
+
+	def mostrar_detalhes(self, event):
+		"""Exibe detalhes da subcategoria selecionada no FrameDetalhes."""
+		selection = self.lista_categorias.curselection()
+		if selection:
+			texto_selecionado = self.lista_categorias.get(selection[0])
+			if "Categoria -- " in texto_selecionado:
+				categoria = texto_selecionado.split(" -- ")[1]
+				self.frame_detalhes.mostrar_detalhes(categoria, None, self.categorias)
+			
+				self.entrada_categoria.delete(0,"end")
+				self.entrada_categoria.insert("end",categoria)
+				self.entrada_subcategoria.delete(0,"end")
+
+			elif " - " in texto_selecionado:
+				subcategoria = texto_selecionado.replace(" - ","").split(" ")[1]
+				for key in self.categorias.keys():
+					if subcategoria in self.categorias[key].keys():
+						categoria = key
+						break
+				self.entrada_categoria.delete(0,"end")
+				self.entrada_categoria.insert("end",categoria)
+				
+				self.entrada_subcategoria.delete(0,"end")
+				self.entrada_subcategoria.insert("end",subcategoria)
+
+				
+
+						
+				self.frame_detalhes.mostrar_detalhes(categoria, subcategoria, self.categorias)
+
+class FrameDetalhes(customtkinter.CTkFrame):
+	#FIXME não ta adicionando palavra chave nem removendo
+	def __init__(self, parent):
+		super().__init__(parent)
+
+		self.create_widgets()
+
+	def create_widgets(self):
+		self.label_detalhes = customtkinter.CTkLabel(self, text="Detalhes da Subcategoria")
+		self.lista_palavras_chave = Listbox(self)
+		self.label_Palavra = customtkinter.CTkLabel(self, text='Palavra-chave',fg_color='transparent')
+		self.entrada_palavra_chave = customtkinter.CTkEntry(self, width=180)
+		self.btn_add_palavra = customtkinter.CTkButton(self, text="Adicionar", command=self.adicionar_palavra_chave,width=70)
+		self.btn_remover_palavra = customtkinter.CTkButton(self, text="Remover", command=self.
+		remover_palavra_chave,width=70)
+		
+		self.lista_palavras_chave.bind("<<ListboxSelect>>", self.editar_palavra)
+		
+		self.label_detalhes.grid(row=0,column=0,columnspan=2,padx=10, pady=2)
+		self.lista_palavras_chave.grid(row=1,column=0,columnspan=2,padx=5,sticky='nswe')
+		self.label_Palavra.grid(row=2,column=0,columnspan=2)
+		self.entrada_palavra_chave.grid(row=3,column=0,columnspan=2,pady=5,padx=4)
+		self.btn_add_palavra.grid(row=4,column=0,pady=2)
+		self.btn_remover_palavra.grid(row=4,column=1,pady=2)
+
+	def mostrar_detalhes(self, categoria, subcategoria, categorias_dict):
+		self.categoria = categoria
+		self.subcategoria = subcategoria
+		self.categorias_dict = categorias_dict
+
+		# Limpa a lista de palavras-chave antes de exibir novas
+		self.lista_palavras_chave.delete(0, "end")
+		if subcategoria:
+			palavras_chave = categorias_dict[categoria][subcategoria]
+			for palavra in palavras_chave:
+				self.lista_palavras_chave.insert("end", palavra)
+
+	def editar_palavra(self,event):
+		selecao_cursor = self.lista_palavras_chave.curselection()
+
+		if len(selecao_cursor) >0:
+			self.entrada_palavra_chave.delete(0, "end")
+
+			self.entrada_palavra_chave.insert("end",self.lista_palavras_chave.get(selecao_cursor[0]))
+
+	def adicionar_palavra_chave(self):
+		palavra_chave = self.entrada_palavra_chave.get()
+		if palavra_chave and self.subcategoria:
+			if palavra_chave not in self.categorias_dict[self.categoria][self.subcategoria]:
+				self.categorias_dict[self.categoria][self.subcategoria].append(palavra_chave)
+				self.lista_palavras_chave.insert("end", palavra_chave)
+				self.master.salvar_dados()
+				self.entrada_palavra_chave.delete(0, "end")
+			else:
+				messagebox.showwarning("Aviso", "Essa palavra-chave já existe.")
+			self.master.atualizar_lista()
+
+	def remover_palavra_chave(self):
+		selecionado = self.lista_palavras_chave.curselection()
+		if selecionado and self.subcategoria:
+			palavra = self.lista_palavras_chave.get(selecionado)
+			self.categorias_dict[self.categoria][self.subcategoria].remove(palavra)
+			self.lista_palavras_chave.delete(selecionado)
+			self.master.salvar_dados()
+			self.master.atualizar_lista()
+
 class MenuPrincipal(customtkinter.CTkFrame):
-	def __init__(self, master, abrir_cadastro_callback, abrir_historico_callback, organizar_callback):
+	def __init__(self, master, abrir_cadastro_callback, abrir_historico_callback, abrir_estruturacao_callback, organizar_callback,):
 		super().__init__(master)
 		self.abrir_cadastro_callback = abrir_cadastro_callback
 		self.abrir_historico_callback = abrir_historico_callback
 		self.organizar_callback = organizar_callback
+		self.abrir_Estruturacao_callback = abrir_estruturacao_callback
 		self.create_widgets()
 
 	def create_widgets(self):
@@ -60,8 +278,8 @@ class MenuPrincipal(customtkinter.CTkFrame):
 		# Botões do menu
 		self.Bt_cadastro = customtkinter.CTkButton(self.leftFrameMenu, text="Cadastro", command=self.abrir_cadastro_callback)
 		self.Bt_historico = customtkinter.CTkButton(self.leftFrameMenu, text="Histórico", command=self.abrir_historico_callback)
-		self.Bt_Estruturacao = customtkinter.CTkButton(self.leftFrameMenu, text="Estruturação", command=self.abrir_Estruturacao_callback,bg_color="red")
-		self.Bt_organizar = customtkinter.CTkButton(self.leftFrameMenu, text="Organizar", command=self.organizar_callback,bg_color="green")
+		self.Bt_Estruturacao = customtkinter.CTkButton(self.leftFrameMenu, text="Estruturação", command=self.abrir_Estruturacao_callback,fg_color="red")
+		self.Bt_organizar = customtkinter.CTkButton(self.leftFrameMenu, text="Organizar", command=self.organizar_callback,fg_color="green")
 		
 		self.Bt_cadastro.grid(row=0, padx=10, pady=10)
 		self.Bt_historico.grid(row=1, padx=10, pady=10)
@@ -186,14 +404,15 @@ class Historico(customtkinter.CTkFrame):
 
 		#TODO colocar valid entry aqui
 		self.EntryFrameHisto = customtkinter.CTkFrame(self.leftFrameHisto, fg_color='#6B6B6B')
+		
 		self.LabelDt = customtkinter.CTkLabel(self.EntryFrameHisto, text='Data', anchor='center')
 		self.LabelDia = customtkinter.CTkLabel(self.EntryFrameHisto, text='Dia')
-		self.EntryDiaHistorico = customtkinter.CTkEntry(self.EntryFrameHisto, width=45)
+		self.EntryDiaHistorico = customtkinter.CTkEntry(self.EntryFrameHisto, width=45,validate='key',validatecommand=(self.master.register(self.ValidEntrys), '%P'))
 		self.LabelMes = customtkinter.CTkLabel(self.EntryFrameHisto, text='Mês')
-		self.EntryMesHistorico = customtkinter.CTkEntry(self.EntryFrameHisto, width=45)
+		self.EntryMesHistorico = customtkinter.CTkEntry(self.EntryFrameHisto, width=45,validate='key',validatecommand=(self.master.register(self.ValidEntrys), '%P'))
 		self.LabelAno = customtkinter.CTkLabel(self.EntryFrameHisto, text='Ano')
-		self.EntryAnoHistorico = customtkinter.CTkEntry(self.EntryFrameHisto, width=45)
-		self.Bt_Pesquisar = customtkinter.CTkButton(self.EntryFrameHisto, text="Pesquisar")
+		self.EntryAnoHistorico = customtkinter.CTkEntry(self.EntryFrameHisto, width=45,validate='key',validatecommand=(self.master.register(self.ValidEntrys), '%P'))
+		self.Bt_Pesquisar = customtkinter.CTkButton(self.EntryFrameHisto, text="Pesquisar",command=self.Pesq_Historico)
 		self.Bt_voltar_Historico = customtkinter.CTkButton(self.leftFrameHisto, text="Voltar", command=self.voltar_callback)
 		self.listbox_Historico = Listbox(self.rightFrameHisto, width=60, height=15)
 
@@ -213,6 +432,43 @@ class Historico(customtkinter.CTkFrame):
 		self.Bt_voltar_Historico.pack(side="bottom", padx=10, pady=10)
 		self.listbox_Historico.pack()
 
+	def Pesq_Historico():
+		#TODO FUNÇÃO PARA BUSCAR DADOS NO HISTORICO CASO HAJA
+		pass
+
+	def ValidEntrys(self,new_value):
+		if new_value.isdigit():
+			match (self.master.focus_get().master):
+				#switch em python 
+				case self.EntryDiaHistorico:
+					#Caso esteja na entry do Dia 
+					if int(new_value) <= 31:
+						return True
+					else:
+						return False
+					
+				case self.EntryMesHistorico:
+					#Caso esteja na entry do Mes 
+					if int(new_value) <= 12:
+						return True
+					else:
+						return False
+					
+				case self.EntryAnoHistorico:
+					#Caso esteja na entry do Ano 
+					if int(new_value) <= int(strftime("%Y")):
+						return True
+					else:
+						return False
+					
+				case _:
+					return True
+				
+		elif new_value == '':
+			return True
+		else:
+			return False
+
 class App:
 	def __init__(self):
 		self.janela = customtkinter.CTk()
@@ -227,10 +483,10 @@ class App:
 			with open('Clientes.json', 'w', encoding='utf-8') as arq:
 				json.dump(self.Clientes, arq)
 
-		self.frame_menu_principal = MenuPrincipal(self.janela, self.abrir_cadastro, self.abrir_historico, self.organizar,self.abrir_Estruturacao)
+		self.frame_menu_principal = MenuPrincipal(self.janela, self.abrir_cadastro, self.abrir_historico,self.abrir_estruturacao , self.organizar)
 		self.frame_cadastro = Cadastro(self.janela, self.voltar_menu,self.Clientes)
 		self.frame_historico = Historico(self.janela, self.voltar_menu)
-		self.frame_historico = Historico(self.janela, self.voltar_menu)
+		self.frame_estrutura = GerenciadorCategorias(self.janela, self.voltar_menu)
 
 		self.frame_menu_principal.pack()
 
@@ -244,8 +500,10 @@ class App:
 		self.frame_menu_principal.pack_forget()
 		self.frame_historico.pack()
 
-	def abrir_Estruturacao(self):
-		#TODO Criar tela de estruturação
+	def abrir_estruturacao(self):
+		self.frame_menu_principal.pack_forget()
+		self.frame_estrutura.pack()
+		pass
 
 	def organizar(self):
 		#TODO adicionar função principal
@@ -256,6 +514,7 @@ class App:
 	def voltar_menu(self):
 		self.frame_cadastro.pack_forget()
 		self.frame_historico.pack_forget()
+		self.frame_estrutura.pack_forget()
 		self.frame_menu_principal.pack()
 
 if __name__ == "__main__":

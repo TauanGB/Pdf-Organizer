@@ -24,6 +24,8 @@ class GerenciadorCategorias(ctk.CTkFrame):
 		self.lista_categorias = Listbox(self, width=35, height=10, fg="black")  # LISTA DE CATEGORIAS
 		self.lista_categorias.bind("<<ListboxSelect>>", self.mostrar_detalhes)  # Binding para exibir detalhes
 		
+		self.alerta = ctk.CTkLabel(self, text="FAVOR NÃO FECHAR OU SAIR SEM SALVAR ", text_color='red')  #ALERTA
+		self.btn_remover_subcategoria = ctk.CTkButton(self, text="-", command=self.remover_subcategoria, width=40)#FIXME BT PRA SALVAR?
 
 		# Layout
 		self.titulo.grid(row=0, column=1, columnspan=5, pady=10)  # TÍTULO
@@ -36,6 +38,7 @@ class GerenciadorCategorias(ctk.CTkFrame):
 		self.btn_remover_categoria.grid(row=1, column=6, padx=10, pady=10)  # BT REMOVER CATEGORIA
 		self.btn_remover_subcategoria.grid(row=2, column=6, padx=10, pady=10)  # BT REMOVER SUBCATEGORIA
 		self.lista_categorias.grid(row=3, column=1, columnspan=2, pady=10, sticky="nsew")  # LISTA CATEGORIAS
+		self.alerta.grid(row=4, column=1, columnspan=2, pady=10, sticky="nsew")  #ALERTA
 
 		# Frame adicional à direita
 		self.frame_detalhes = FrameDetalhes(self)
@@ -184,11 +187,12 @@ class FrameDetalhes(ctk.CTkFrame):
 				self.lista_palavras_chave.insert("end", palavra)
 
 	def editar_palavra(self,event):
-		self.entrada_palavra_chave.delete(0, "end")
+		selecao_cursor = self.lista_palavras_chave.curselection()
 
-		self.entrada_palavra_chave.insert("end",self.lista_palavras_chave.get(self.lista_palavras_chave.curselection()[0]))
-		
-		pass
+		if len(selecao_cursor) >0:
+			self.entrada_palavra_chave.delete(0, "end")
+
+			self.entrada_palavra_chave.insert("end",self.lista_palavras_chave.get(selecao_cursor[0]))
 
 	def adicionar_palavra_chave(self):
 		palavra_chave = self.entrada_palavra_chave.get()
