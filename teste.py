@@ -76,9 +76,11 @@ class GerenciadorCategorias(ctk.CTkFrame):
 			if nome_categoria in self.categorias:
 				if nome_subcategoria not in self.categorias[nome_categoria]:
 					self.categorias[nome_categoria][nome_subcategoria] = []
-				self.atualizar_lista()
-				self.salvar_dados()
-				self.entrada_subcategoria.delete(0, "end")
+					self.atualizar_lista()
+					self.salvar_dados()
+					self.entrada_subcategoria.delete(0, "end")
+				else:
+					messagebox.showerror("Erro", "Essa SubCategoria Ja existe.")
 			else:
 				messagebox.showerror("Erro", "A categoria especificada não existe.")
 		else:
@@ -119,7 +121,6 @@ class GerenciadorCategorias(ctk.CTkFrame):
 				self.lista_categorias.insert("end", f"  - {sub} ({len(palavras_chave)} palavras-chave)")
 
 	def mostrar_detalhes(self, event):
-		#FIXME arrumar, limpar antes de colocar outro
 		"""Exibe detalhes da subcategoria selecionada no FrameDetalhes."""
 		selection = self.lista_categorias.curselection()
 		if selection:
@@ -127,9 +128,26 @@ class GerenciadorCategorias(ctk.CTkFrame):
 			if "Categoria -- " in texto_selecionado:
 				categoria = texto_selecionado.split(" -- ")[1]
 				self.frame_detalhes.mostrar_detalhes(categoria, None, self.categorias)
+			
+				self.entrada_categoria.delete(0,"end")
+				self.entrada_categoria.insert("end",categoria)
+				self.entrada_subcategoria.delete(0,"end")
+
 			elif " - " in texto_selecionado:
-				categoria = self.lista_categorias.get(selection[0] - 1).split(" -- ")[1]
-				subcategoria = texto_selecionado.split(" - ")[1].split(" ")[0]
+				subcategoria = texto_selecionado.replace(" - ","").split(" ")[1]
+				for key in self.categorias.keys():
+					if subcategoria in self.categorias[key].keys():
+						categoria = key
+						break
+				self.entrada_categoria.delete(0,"end")
+				self.entrada_categoria.insert("end",categoria)
+				
+				self.entrada_subcategoria.delete(0,"end")
+				self.entrada_subcategoria.insert("end",subcategoria)
+
+				
+
+						
 				self.frame_detalhes.mostrar_detalhes(categoria, subcategoria, self.categorias)
 
 class FrameDetalhes(ctk.CTkFrame):
@@ -141,8 +159,10 @@ class FrameDetalhes(ctk.CTkFrame):
 		self.label_Palavra = ctk.CTkLabel(self, text='Palavra-chave',fg_color='transparent')
 		self.entrada_palavra_chave = ctk.CTkEntry(self, width=180)
 		self.btn_add_palavra = ctk.CTkButton(self, text="Adicionar", command=self.adicionar_palavra_chave,width=70)
-		self.btn_remover_palavra = ctk.CTkButton(self, text="Remover", command=self.remover_palavra_chave,width=70)
-
+		self.btn_remover_palavra = ctk.CTkButton(self, text="Remover", command=self.
+		remover_palavra_chave,width=70)
+		
+		self.lista_palavras_chave.bind("<<ListboxSelect>>", self.editar_palavra)
 		
 		self.label_detalhes.grid(row=0,column=0,columnspan=2,padx=10, pady=2)
 		self.lista_palavras_chave.grid(row=1,column=0,columnspan=2,padx=5,sticky='nswe')
@@ -163,6 +183,13 @@ class FrameDetalhes(ctk.CTkFrame):
 			for palavra in palavras_chave:
 				self.lista_palavras_chave.insert("end", palavra)
 
+	def editar_palavra(self,event):
+		self.entrada_palavra_chave.delete(0, "end")
+
+		self.entrada_palavra_chave.insert("end",self.lista_palavras_chave.get(self.lista_palavras_chave.curselection()[0]))
+		
+		pass
+
 	def adicionar_palavra_chave(self):
 		palavra_chave = self.entrada_palavra_chave.get()
 		if palavra_chave and self.subcategoria:
@@ -173,6 +200,7 @@ class FrameDetalhes(ctk.CTkFrame):
 				self.entrada_palavra_chave.delete(0, "end")
 			else:
 				messagebox.showwarning("Aviso", "Essa palavra-chave já existe.")
+			self.master.atualizar_lista()
 
 	def remover_palavra_chave(self):
 		selecionado = self.lista_palavras_chave.curselection()
@@ -181,6 +209,7 @@ class FrameDetalhes(ctk.CTkFrame):
 			self.categorias_dict[self.categoria][self.subcategoria].remove(palavra)
 			self.lista_palavras_chave.delete(selecionado)
 			self.master.salvar_dados()
+			self.master.atualizar_lista()
 			
 
 # Inicialização da janela principal

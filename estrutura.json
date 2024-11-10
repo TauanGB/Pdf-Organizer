@@ -1,8 +1,18 @@
 {
     "Fiscal": {
-        "ICMS": {
-            "palavra_chave": ""
-        },
-        "DMA": []
+        "ICMS": [
+            "palavra_chave",
+            "palavra_chave 3",
+            "palavra_chave 2"
+        ],
+        "DMA": [
+            "DMAAA",
+            "DMEEE"
+        ]
+    },
+    "Contabil": {
+        "JTAA": [
+            "KLA"
+        ]
     }
 }

@@ -60,11 +60,13 @@ class MenuPrincipal(customtkinter.CTkFrame):
 		# Botões do menu
 		self.Bt_cadastro = customtkinter.CTkButton(self.leftFrameMenu, text="Cadastro", command=self.abrir_cadastro_callback)
 		self.Bt_historico = customtkinter.CTkButton(self.leftFrameMenu, text="Histórico", command=self.abrir_historico_callback)
-		self.Bt_organizar = customtkinter.CTkButton(self.leftFrameMenu, text="Organizar", command=self.organizar_callback)
+		self.Bt_Estruturacao = customtkinter.CTkButton(self.leftFrameMenu, text="Estruturação", command=self.abrir_Estruturacao_callback,bg_color="red")
+		self.Bt_organizar = customtkinter.CTkButton(self.leftFrameMenu, text="Organizar", command=self.organizar_callback,bg_color="green")
 		
 		self.Bt_cadastro.grid(row=0, padx=10, pady=10)
 		self.Bt_historico.grid(row=1, padx=10, pady=10)
-		self.Bt_organizar.grid(row=2, padx=10, pady=10)
+		self.Bt_Estruturacao.grid(row=2, padx=10, pady=10)
+		self.Bt_organizar.grid(row=3, padx=10, pady=10)
 
 		# Listbox e barra de progresso
 		self.progressbar = customtkinter.CTkProgressBar(self.rightFrameMenu, progress_color="#0ACF00", orientation='horizontal', width=350)
@@ -182,6 +184,7 @@ class Historico(customtkinter.CTkFrame):
 		self.leftFrameHisto = customtkinter.CTkFrame(self, corner_radius=0, fg_color='transparent')
 		self.rightFrameHisto = customtkinter.CTkFrame(self)
 
+		#TODO colocar valid entry aqui
 		self.EntryFrameHisto = customtkinter.CTkFrame(self.leftFrameHisto, fg_color='#6B6B6B')
 		self.LabelDt = customtkinter.CTkLabel(self.EntryFrameHisto, text='Data', anchor='center')
 		self.LabelDia = customtkinter.CTkLabel(self.EntryFrameHisto, text='Dia')
@@ -224,8 +227,9 @@ class App:
 			with open('Clientes.json', 'w', encoding='utf-8') as arq:
 				json.dump(self.Clientes, arq)
 
-		self.frame_menu_principal = MenuPrincipal(self.janela, self.abrir_cadastro, self.abrir_historico, self.organizar)
+		self.frame_menu_principal = MenuPrincipal(self.janela, self.abrir_cadastro, self.abrir_historico, self.organizar,self.abrir_Estruturacao)
 		self.frame_cadastro = Cadastro(self.janela, self.voltar_menu,self.Clientes)
+		self.frame_historico = Historico(self.janela, self.voltar_menu)
 		self.frame_historico = Historico(self.janela, self.voltar_menu)
 
 		self.frame_menu_principal.pack()
@@ -236,10 +240,12 @@ class App:
 		self.frame_cadastro.pack()
 		self.frame_cadastro.ListarClientes()
 		
-
 	def abrir_historico(self):
 		self.frame_menu_principal.pack_forget()
 		self.frame_historico.pack()
+
+	def abrir_Estruturacao(self):
+		#TODO Criar tela de estruturação
 
 	def organizar(self):
 		#TODO adicionar função principal
