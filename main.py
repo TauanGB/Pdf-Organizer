@@ -2,7 +2,7 @@ import customtkinter
 from tkinter import Listbox
 from tkinter.filedialog import askdirectory
 from tkinter import messagebox
-import PyPDF2 as PdfReader
+import PyPDF2
 import os
 import json
 from time import strftime
@@ -64,7 +64,7 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 		self.lista_categorias.bind("<<ListboxSelect>>", self.mostrar_detalhes)  # Binding para exibir detalhes
 		
 		self.alerta = customtkinter.CTkLabel(self, text="FAVOR NÃO VOLTAR OU FECHAR A JANELA SEM SALVAR", text_color='red')  #ALERTA
-		self.btn_voltar = customtkinter.CTkButton(self, text="Voltar", command=self.voltar_menu, width=40)#FIXME BT PRA SALVAR AND VOLTAR ?
+		self.btn_voltar = customtkinter.CTkButton(self, text="Voltar", command=self.retornar_menu, width=40)#BT PRA SALVAR AND VOLTAR 
 
 
 		# Layout
@@ -87,6 +87,11 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 		# Dicionário para armazenar as categorias e subcategorias
 		self.categorias = {}
 		self.carregar_dados()
+
+	def retornar_menu(self):
+		self.salvar_dados()
+		self.voltar_menu()
+
 
 	def carregar_dados(self):
 		"""Carrega as categorias e subcategorias de um arquivo JSON, se existir."""
@@ -194,7 +199,6 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 				self.frame_detalhes.mostrar_detalhes(categoria, subcategoria, self.categorias)
 
 class FrameDetalhes(customtkinter.CTkFrame):
-	#FIXME não ta adicionando palavra chave nem removendo
 	def __init__(self, parent):
 		super().__init__(parent)
 
@@ -402,7 +406,6 @@ class Historico(customtkinter.CTkFrame):
 		self.leftFrameHisto = customtkinter.CTkFrame(self, corner_radius=0, fg_color='transparent')
 		self.rightFrameHisto = customtkinter.CTkFrame(self)
 
-		#TODO colocar valid entry aqui
 		self.EntryFrameHisto = customtkinter.CTkFrame(self.leftFrameHisto, fg_color='#6B6B6B')
 		
 		self.LabelDt = customtkinter.CTkLabel(self.EntryFrameHisto, text='Data', anchor='center')
@@ -508,8 +511,92 @@ class App:
 	def organizar(self):
 		#TODO adicionar função principal
 		self.Diretorio = askdirectory()
-		if not self.Diretorio:
-			return
+		self.PdfProcessados = {}
+		if self.Diretorio != "":
+			tmparquivos = [f for f in os.listdir(self.Diretorio) if os.path.isfile(os.path.join(self.Diretorio, f))]
+			arquivos = [f for f in tmparquivos if ".pdf" in f]
+			print(arquivos)
+			if len(arquivos) != 0:
+				'''for Arq in arquivos:# identificar aquivo e emrpresa referente
+					#if nao identificar, deixar evidenciado,
+					
+					print(Arq)
+					tmpDiretorio = self.Diretorio + "/" + Arq
+					listPalavras = PdfReader(tmpDiretorio).pages[0].extract_text().split("\n")
+
+					for i in listPalavras:#FOR PRA PASSAR EM CADA ELEMENTO DA LISTA
+						#if's pra identificar tanto em razão social quanto com o cnpj ou cpf
+						# SE NAO:
+						pass	
+
+
+					pass
+				pass'''
+
+				# Palavras-chave para identificar o tipo de documento
+				tipos_documento = {
+					"BOLETO BENEFICIO SOCIAL": [" Beneficio Social Familiar"],
+					"FGTS Digital": ["GFD", "Guia do FGTS Digital"],
+					"Simples Nacional": ["Simples Nacional"],
+					"RECEITA FEDERAIS": ["Receitas Federais"],
+					"ICMS": ["ICMS", "ICMS - ANTECIPACAO PARCIAL"],
+
+					# Adicione mais tipos e palavras-chave conforme necessário
+				}
+				
+				clientes = {"22.016.108/0001-05":"CARLA EVANGELISTA GASPAR"}
+
+				# Loop para percorrer diretórios e subdiretórios
+				for arq in arquivos:
+					tmpDiretorio = self.Diretorio + "/" + arq
+					print(f"Analisando PDF: {tmpDiretorio}")
+					
+					# Tentar abrir e ler o PDF
+					##TODO Alterar codigo pra que rode conforme necessario no meu caso
+					try:
+						with open(tmpDiretorio, "rb") as pdf_file:
+							pdf_reader = PyPDF2.PdfReader(pdf_file)
+							
+							texto = pdf_reader.pages[0].extract_text()
+								
+							# Identificar o cliente baseado no nome e cadastro unico
+							cliente_identificado = None
+							for cad_pessoa, nome in clientes.items():
+								if cad_pessoa in texto or nome in texto:
+									cliente_identificado = nome
+									print(f"Cliente identificado: {nome}")
+									break
+							
+							# Identificar o tipo de documento com base nas palavras-chave
+							tipo_documento_identificado = None
+							for tipo, keywords in tipos_documento.items():
+								if any(keyword.lower() in texto.lower() for keyword in keywords):
+									tipo_documento_identificado = tipo
+									print(f"Tipo de documento identificado: {tipo}")
+									break
+
+							# Exibir o resultado da análise
+							if cliente_identificado and tipo_documento_identificado:
+								print(f"Arquivo '{arq}' pertence ao cliente '{cliente_identificado}' e é do tipo '{tipo_documento_identificado}'")
+								self.PdfProcessados[arq] = {"Cliente":cliente_identificado,"Doc Type":tipo_documento_identificado}
+							elif cliente_identificado:
+								print(f"Arquivo '{arq}' pertence ao cliente '{cliente_identificado}', mas tipo de documento não identificado.")
+								self.PdfProcessados[arq] = {"Cliente":cliente_identificado,"Doc Type":None}
+							else:
+								print(f"Cliente não identificado para o arquivo '{arq}'.")
+								self.PdfProcessados[arq] = {"Cliente":None,"Doc Type":tipo_documento_identificado}
+
+					except Exception as e:
+						self.PdfProcessados[arq] = None
+						print(f"Erro ao processar o arquivo {arq}: {e}")
+				print("\033[H\033[2J")
+				for chave in self.PdfProcessados:
+					print(chave)
+					print(self.PdfProcessados[chave])
+			else:
+				messagebox.showerror("Erro","Não há pdf's no diretorio selecionado")
+
+
 
 	def voltar_menu(self):
 		self.frame_cadastro.pack_forget()
