@@ -1,22 +1,26 @@
-{
-    "Fiscal": {
-        "ICMS": [
-            "PLV CHAVE",
-            "PLV CHAVE 2",
-            "PLV CHAVE 3"
-        ],
-        "DMA": [
-            "DMEEE",
-            "DMEEEEE"
-        ]
+[
+    {
+        "FISCAL": {
+            "BOLETO BENEFICIO SOCIAL": [
+                "BENEFICIO SOCIAL FAMILIAR"
+            ],
+            "FGTS Digital": [
+                "GUIA DO FGTS DIGITAL",
+                "GFD"
+            ],
+            "Simples Nacional": [
+                "SIMPLES NACIONAL"
+            ]
+        },
+        "CONTABIL": {
+            "RECEITA FEDERAIS": [
+                "RECEITAS FEDERAIS"
+            ],
+            "ICMS": [
+                "ICMS",
+                "ICMS - ANTECIPACAO PARCIAL"
+            ]
+        }
     },
-    "Contabil": {
-        "JTAA": [
-            "KLA",
-            "KKLOP"
-        ]
-    },
-    "Financeiro": {
-        "JTAArrtasd": []
-    }
-}
+    "C:/Users/tauan/OneDrive/Scripts/Bots M\u00e3e/Arquivos privados M\u00e3e/Sentido"
+]

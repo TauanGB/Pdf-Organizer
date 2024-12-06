@@ -55,57 +55,68 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 		# Componentes principais
 		self.titulo = customtkinter.CTkLabel(self, text="Gerenciar Categorias e Subcategorias")  # Título
 		self.label_categoria = customtkinter.CTkLabel(self, text="Categoria (Pasta):")  # LABEL CATEGORIA
-		self.entrada_categoria = customtkinter.CTkEntry(self, width=200)  # ENTRY CATEGORIA
+		self.entrada_categoria = customtkinter.CTkEntry(self)  # ENTRY CATEGORIA
 		self.label_subcategoria = customtkinter.CTkLabel(self, text="Subcategoria (PDF):")  # LABEL SUBCATEGORIA
-		self.entrada_subcategoria = customtkinter.CTkEntry(self, width=200)  # ENTRY SUBCATEGORIA
+		self.entrada_subcategoria = customtkinter.CTkEntry(self)  # ENTRY SUBCATEGORIA
 		self.btn_add_categoria = customtkinter.CTkButton(self, text="+", command=self.adicionar_categoria, width=40)  # BT ADICIONAR CATEGORIA
 		self.btn_add_subcategoria = customtkinter.CTkButton(self, text="+", command=self.adicionar_subcategoria, width=40)  # BT ADICIONAR SUBCATEGORIA
 		self.btn_remover_categoria = customtkinter.CTkButton(self, text="-", command=self.remover_categoria, width=40)  # BT REMOVER CATEGORIA
 		self.btn_remover_subcategoria = customtkinter.CTkButton(self, text="-", command=self.remover_subcategoria, width=40)  # BT REMOVER SUBCATEGORIA
-		self.lista_categorias = Listbox(self, width=35, height=10, fg="black")  # LISTA DE CATEGORIAS
+		self.lista_categorias = Listbox(self, height=10, fg="black")  # LISTA DE CATEGORIAS
 		self.lista_categorias.bind("<<ListboxSelect>>", self.mostrar_detalhes)  # Binding para exibir detalhes
 		
 		self.alerta = customtkinter.CTkLabel(self, text="FAVOR NÃO VOLTAR OU FECHAR A JANELA SEM SALVAR", text_color='red')  #ALERTA
 		self.btn_voltar = customtkinter.CTkButton(self, text="Voltar", command=self.retornar_menu, width=40)#BT PRA SALVAR AND VOLTAR 
+		
+		self.Diretorio_Principal = ''
+		self.Diretorio_Principal_label = customtkinter.CTkLabel(self,text=self.Diretorio_Principal ,textvariable=self.Diretorio_Principal)  # LABEL SUBCATEGORIA
+		self.Selecionar_diretorio = customtkinter.CTkButton(self, text="Alterar Diretorio Padrão", command=self.Select_Diretorio)#BT PRA SALVAR AND VOLTAR 
 
 
 		# Layout
 		self.titulo.grid(row=0, column=1, columnspan=5, pady=10)  # TÍTULO
-		self.label_categoria.grid(row=1, column=1, padx=10, pady=5, sticky="w")  # LABEL CATEGORIA
-		self.entrada_categoria.grid(row=1, column=2, padx=10, pady=5)  # ENTRY CATEGORIA
-		self.label_subcategoria.grid(row=2, column=1, padx=10, pady=5, sticky="w")  # LABEL SUBCATEGORIA
-		self.entrada_subcategoria.grid(row=2, column=2, padx=10, pady=5)  # ENTRY SUBCATEGORIA
+		self.label_categoria.grid(row=1, column=1, padx=10, pady=5)  # LABEL CATEGORIA
+		self.entrada_categoria.grid(row=1, column=2, padx=10, pady=5, sticky="we")  # ENTRY CATEGORIA
+		self.label_subcategoria.grid(row=2, column=1, padx=10, pady=5)  # LABEL SUBCATEGORIA
+		self.entrada_subcategoria.grid(row=2, column=2, padx=10, pady=5,sticky="we")  # ENTRY SUBCATEGORIA
 		self.btn_add_categoria.grid(row=1, column=5, padx=10, pady=10)  # BT ADICIONAR CATEGORIA
 		self.btn_add_subcategoria.grid(row=2, column=5, padx=10, pady=10)  # BT ADICIONAR SUBCATEGORIA
 		self.btn_remover_categoria.grid(row=1, column=6, padx=10, pady=10)  # BT REMOVER CATEGORIA
 		self.btn_remover_subcategoria.grid(row=2, column=6, padx=10, pady=10)  # BT REMOVER SUBCATEGORIA
 		self.lista_categorias.grid(row=3, column=1, columnspan=2, pady=10, sticky="nsew")  # LISTA CATEGORIAS
-		self.alerta.grid(row=4, column=1, padx=5,pady=5, sticky="nsew")  #ALERTA
-		self.btn_voltar.grid(row=4, column=6)
+		self.alerta.grid(row=4, column=1,columnspan=4, padx=5,pady=5, sticky="nsew")  #ALERTA
+		self.btn_voltar.grid(row=5, column=5, columnspan=6,sticky="ew",padx=5,pady=5)
 		# Frame adicional à direita
 		self.frame_detalhes = FrameDetalhes(self)
 		self.frame_detalhes.grid(row=0, rowspan=4, column=0, padx=20, pady=10, sticky="nsew")
+
+		self.Diretorio_Principal_label.grid(row=5, column=0, padx=20, pady=10, sticky="nsew")
+		self.Selecionar_diretorio.grid(row=5, column=1, padx=20, pady=10, sticky="nsew")
 		
 		# Dicionário para armazenar as categorias e subcategorias
 		self.categorias = {}
 		self.carregar_dados()
 
+	def Select_Diretorio(self):
+		self.Diretorio_Principal = askdirectory()
+		self.Diretorio_Principal_label.configure(text=self.Diretorio_Principal.split("/")[-1])
+		self.salvar_dados()
+
 	def retornar_menu(self):
 		self.salvar_dados()
 		self.voltar_menu()
 
-
 	def carregar_dados(self):
-		"""Carrega as categorias e subcategorias de um arquivo JSON, se existir."""
 		if os.path.exists('estrutura.json'):
 			with open('estrutura.json', 'r') as file:
-				self.categorias = json.load(file)
+				self.categorias,self.Diretorio_Principal = json.load(file)
+			self.Diretorio_Principal_label.configure(text=self.Diretorio_Principal.split("/")[-1])
 			self.atualizar_lista()
 
 	def salvar_dados(self):
 		"""Salva as categorias e subcategorias em um arquivo JSON."""
 		with open('estrutura.json', 'w') as file:
-			json.dump(self.categorias, file, indent=4)
+			json.dump([self.categorias,self.Diretorio_Principal], file, indent=4)
 
 	def adicionar_categoria(self):
 		nome_categoria = self.entrada_categoria.get()
@@ -114,6 +125,7 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 				self.categorias[nome_categoria] = {}  # Cada categoria contém um dicionário
 				self.atualizar_lista()
 				self.salvar_dados()
+				self.carregar_dados()
 			else:
 				messagebox.showwarning("Aviso", "Essa categoria já existe.")
 		else:
@@ -128,6 +140,7 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 					self.categorias[nome_categoria][nome_subcategoria] = []
 					self.atualizar_lista()
 					self.salvar_dados()
+					self.carregar_dados()
 					self.entrada_subcategoria.delete(0, "end")
 				else:
 					messagebox.showerror("Erro", "Essa SubCategoria Ja existe.")
@@ -161,7 +174,6 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 		else:
 			messagebox.showerror("Erro", "A categoria especificada não existe.")
 
-
 	def atualizar_lista(self):
 		"""Atualiza a exibição de categorias e subcategorias na listbox."""
 		self.lista_categorias.delete(0, "end")
@@ -184,20 +196,19 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 				self.entrada_subcategoria.delete(0,"end")
 
 			elif " - " in texto_selecionado:
-				subcategoria = texto_selecionado.replace(" - ","").split(" ")[1]
+				subcategoria = texto_selecionado.replace(" - ","").split("(")[0].strip()
 				for key in self.categorias.keys():
+					#obtendo categoria referente
 					if subcategoria in self.categorias[key].keys():
 						categoria = key
 						break
+				
 				self.entrada_categoria.delete(0,"end")
 				self.entrada_categoria.insert("end",categoria)
 				
 				self.entrada_subcategoria.delete(0,"end")
 				self.entrada_subcategoria.insert("end",subcategoria)
 
-				
-
-						
 				self.frame_detalhes.mostrar_detalhes(categoria, subcategoria, self.categorias)
 
 class FrameDetalhes(customtkinter.CTkFrame):
@@ -245,10 +256,11 @@ class FrameDetalhes(customtkinter.CTkFrame):
 			self.entrada_palavra_chave.insert("end",self.lista_palavras_chave.get(selecao_cursor[0]))
 
 	def adicionar_palavra_chave(self):
-		palavra_chave = self.entrada_palavra_chave.get()
+		palavra_chave = self.entrada_palavra_chave.get().upper()
 		if palavra_chave and self.subcategoria:
 			if palavra_chave not in self.categorias_dict[self.categoria][self.subcategoria]:
 				self.categorias_dict[self.categoria][self.subcategoria].append(palavra_chave)
+				
 				self.lista_palavras_chave.insert("end", palavra_chave)
 				self.master.salvar_dados()
 				self.entrada_palavra_chave.delete(0, "end")
@@ -271,14 +283,14 @@ class MenuPrincipal(customtkinter.CTkFrame):
 		self.abrir_cadastro_callback = abrir_cadastro_callback
 		self.abrir_historico_callback = abrir_historico_callback
 		self.abrir_Estruturacao_callback = abrir_estruturacao_callback
-
-		if os.path.isfile('Historico.json'):
-			with open('Clientes.json', 'r', encoding='utf-8') as arq:
+		'''if os.path.isfile('Historico.json'):
+			with open('Historico.json', 'r', encoding='utf-8') as arq:
 				self.Historico = json.load(arq)
+				arq.close()
 		else:
 			self.Historico = {f"{strftime("%d/%m/%Y")}": ["Exemplo Historico"]}
 			with open('Historico.json', 'w', encoding='utf-8') as arq:
-				json.dump(self.Clientes, arq)
+				json.dump("{}", arq)'''
 		
 
 		self.create_widgets()
@@ -303,40 +315,19 @@ class MenuPrincipal(customtkinter.CTkFrame):
 		self.Bt_organizar.grid(row=3, padx=10, pady=10)
 
 		# Listbox e barra de progresso
-		self.progressbar = customtkinter.CTkProgressBar(self.rightFrameMenu, progress_color="#0ACF00", orientation='horizontal', width=350)
-		self.listbox = Listbox(self.rightFrameMenu, width=60, height=15)
+		self.progressbar = customtkinter.CTkProgressBar(self.rightFrameMenu, progress_color="#0ACF00", orientation='horizontal')
+		self.listbox = Listbox(self.rightFrameMenu, width=150, height=15)
 		
-		self.progressbar.pack(padx=10, pady=10, expand=1)
+		self.progressbar.pack(padx=10, pady=10,fill='x', expand=1)
 		self.listbox.pack(padx=10, pady=10)
 
 	def organizar(self):
-		#TODO adicionar função principal
 		self.Diretorio = askdirectory()
 		self.PdfProcessados = {}
-		if self.Diretorio != "":
-			tmparquivos = [f for f in os.listdir(self.Diretorio) if os.path.isfile(os.path.join(self.Diretorio, f))]
-			arquivos = [f for f in tmparquivos if ".pdf" in f]
-			print(arquivos)
-			if len(arquivos) != 0:
-				'''for Arq in arquivos:# identificar aquivo e emrpresa referente
-					#if nao identificar, deixar evidenciado,
-					
-					print(Arq)
-					tmpDiretorio = self.Diretorio + "/" + Arq
-					listPalavras = PdfReader(tmpDiretorio).pages[0].extract_text().split("\n")
+		self.PdfNaoReconhecidos = {}		
 
-					for i in listPalavras:#FOR PRA PASSAR EM CADA ELEMENTO DA LISTA
-						#if's pra identificar tanto em razão social quanto com o cnpj ou cpf
-						# SE NAO:
-						pass	
-
-
-					pass
-				pass'''
-
-				# Palavras-chave para identificar o tipo de documento
-				tipos_documento = {
-					"BOLETO BENEFICIO SOCIAL": [" Beneficio Social Familiar"],
+		tipos_documento = {
+					"BOLETO BENEFICIO SOCIAL": ["Beneficio Social Familiar"],
 					"FGTS Digital": ["GFD", "Guia do FGTS Digital"],
 					"Simples Nacional": ["Simples Nacional"],
 					"RECEITA FEDERAIS": ["Receitas Federais"],
@@ -344,83 +335,138 @@ class MenuPrincipal(customtkinter.CTkFrame):
 
 					# Adicione mais tipos e palavras-chave conforme necessário
 				}
-				
-				clientes = {"22.016.108/0001-05":"CARLA EVANGELISTA GASPAR"}
 
+		if self.Diretorio != "":
+			tmparquivos = [f for f in os.listdir(self.Diretorio) if os.path.isfile(os.path.join(self.Diretorio, f))]
+			arquivos = [f for f in tmparquivos if ".pdf" in f]
+			print(arquivos)
+			if len(arquivos) != 0:
 				# Loop para percorrer diretórios e subdiretórios
+				if os.path.exists('estrutura.json'):
+					with open('estrutura.json', 'r') as file:
+						self.estrutura,self.Diretorio_Principal = json.load(file)	
+				else:
+					messagebox.showwarning("Alerta","Antes de prosseguir crie a estrutura")
+					return
+
+				if os.path.isfile('Clientes.json'):
+					with open('Clientes.json', 'r', encoding='utf-8') as arq:
+						self.clientes = json.load(arq)
+				else:
+					messagebox.showwarning("Alerta","Antes de prosseguir cadastre os clientes")
+					return
+
 				for arq in arquivos:
 					tmpDiretorio = self.Diretorio + "/" + arq
 					print(f"Analisando PDF: {tmpDiretorio}")
-					
 					# Tentar abrir e ler o PDF
-					##TODO Alterar codigo pra que rode conforme necessario no meu caso
 					try:
 						with open(tmpDiretorio, "rb") as pdf_file:
 							pdf_reader = PyPDF2.PdfReader(pdf_file)
-							
 							texto = pdf_reader.pages[0].extract_text()
-								
-							# Identificar o cliente baseado no nome e cadastro unico
-							cliente_identificado = None
-							for cad_pessoa, nome in clientes.items():
-								if cad_pessoa in texto or nome in texto:
-									cliente_identificado = nome
-									print(f"Cliente identificado: {nome}")
-									break
-							
-							# Identificar o tipo de documento com base nas palavras-chave
-							tipo_documento_identificado = None
-							for tipo, keywords in tipos_documento.items():
-								if any(keyword.lower() in texto.lower() for keyword in keywords):
-									tipo_documento_identificado = tipo
-									print(f"Tipo de documento identificado: {tipo}")
-									break
-							
-							# Exibir o resultado da análise
-							if cliente_identificado and tipo_documento_identificado:
-								print(f"Arquivo '{arq}' pertence ao cliente '{cliente_identificado}' e é do tipo '{tipo_documento_identificado}'")
-								self.PdfProcessados[arq] = {"Cliente":cliente_identificado,"Doc Type":tipo_documento_identificado}
-							elif cliente_identificado:
-								print(f"Arquivo '{arq}' pertence ao cliente '{cliente_identificado}', mas tipo de documento não identificado.")
-								self.PdfProcessados[arq] = {"Cliente":cliente_identificado,"Doc Type":None}
-							else:
-								print(f"Cliente não identificado para o arquivo '{arq}'.")
-								self.PdfProcessados[arq] = {"Cliente":None,"Doc Type":tipo_documento_identificado}
-
+							pdf_file.close()
 					except Exception as e:
-						self.PdfProcessados[arq] = None
+						self.PdfNaoReconhecidos[arq] = {"Cliente":"","Doc Type":""}
 						print(f"Erro ao processar o arquivo {arq}: {e}")
+						continue
+							
+								
+						# Identificar o cliente baseado no nome e cadastro unico
+					cliente_identificado = ''
+					for cad_pessoa, nome in self.clientes.items():
+						if cad_pessoa in texto or nome in texto:
+							cliente_identificado = nome
+							print(f"Cliente identificado: {nome}")
+							break
+						elif cad_pessoa[0:10] in texto:
+							cliente_identificado = nome
+							print(f"Cliente identificado: {nome}")
+							break
+
+					# Identificar o tipo de documento com base nas palavras-chave
+					tipo_documento_identificado = ''
+					for tipo, keywords in tipos_documento.items():
+						if any(keyword.lower() in texto.lower() for keyword in keywords):
+							tipo_documento_identificado = tipo
+							print(f"Tipo de documento identificado: {tipo}")
+							break
+					
+					# Exibir o resultado da análise
+					if cliente_identificado != '' and tipo_documento_identificado != '':
+						print(f"Arquivo '{arq}' pertence ao cliente '{cliente_identificado}' e é do tipo '{tipo_documento_identificado}'")
+						self.PdfProcessados[arq] = {"Cliente":cliente_identificado,"Doc Type":tipo_documento_identificado}
+					elif tipo_documento_identificado == '':
+						print(f"Arquivo '{arq}' pertence ao cliente '{cliente_identificado}', mas tipo de documento não identificado.")
+						self.PdfNaoReconhecidos[arq] = {"Cliente":cliente_identificado,"Doc Type":""}
+					else:
+						print(f"Cliente não identificado para o arquivo '{arq}'.")
+						self.PdfNaoReconhecidos[arq] = {"Cliente":"","Doc Type":tipo_documento_identificado}
+
 
 				print("\033[H\033[2J")
 				for chave in self.PdfProcessados:
 					print(chave)
 					print(self.PdfProcessados[chave])
-				## Leitura Feita arquivos identificados
-				## TODO CONFIRMAÇÃO COM USUARIO SOBRE ARQUIVOS POSSIVELMENTE NÃO IDENTIFICADOS
+				## Leitura Feita arquivos marcados
 
-				if None in self.PdfProcessados.items():
-					for arq in self.PdfProcessados.keys():
-						if None in self.PdfProcessados[arq]:
-							pass
-				
+				if len(self.PdfNaoReconhecidos.keys()) >= 1:
+					TextoTmp = "Os Seguintes Arquivos não foram reconhecidos devido a não reconhecimento de: "
+					for arq in self.PdfNaoReconhecidos.keys():
+						if self.PdfNaoReconhecidos[arq]["Cliente"] == "" and self.PdfNaoReconhecidos[arq]["Doc Type"] == "":
+							TextoTmp = TextoTmp + f"\n{arq} - Tipo do arquivo , Cliente"
 
-				## TODO MUDANÇA DE LOCAL DE ARQUIVOS
-				## TODO ADICIONAR EVENTO DE ANOTAÇÃOA  HISTORICO
+						elif self.PdfNaoReconhecidos[arq]["Cliente"] == "":
+							TextoTmp = TextoTmp + f"\n{arq} - Cliente"
+
+						elif self.PdfNaoReconhecidos[arq]["Doc Type"] == "":
+							TextoTmp = TextoTmp + f"\n{arq} - Tipo do arquivo"
+
+						else:
+							TextoTmp = TextoTmp + f"\n{arq} - Erro no sistema"
+
+					TextoTmp = TextoTmp+"\n\n\nDeseja Continuar?"
+					Resposta = messagebox.askquestion("Atenção",TextoTmp)
+					print(Resposta)
+
+					if Resposta == "no":
+						return
+					
+
 				for arq in self.PdfProcessados.keys():
-					self.listbox.insert(END,arq+" Transferido para c:/sla")
+					dirTypeDoc = self.PdfProcessados[arq]["Doc Type"]
+					dirClient = self.PdfProcessados[arq]["Cliente"]
+					tmpdirreferente = "".join(x for x in self.estrutura.keys() if self.PdfProcessados[arq]["Doc Type"] in self.estrutura[x])
+					if os.path.exists(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}"):
+							os.rename(self.Diretorio + "/" + arq,f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{arq}")
+					else:
+						os.makedirs(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}")
+						os.rename(self.Diretorio + "/" + arq,f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{arq}")
+						
+					self.listbox.insert(END,f"{arq} Transferido para {self.Diretorio_Principal + "/" + arq}")
 					self.master.update()
-					self.master.update_idletasks()	
-
+					self.master.update_idletasks()
+				
+				self.progressbar
 				
 			else:
 				messagebox.showerror("Erro","Não há pdf's no diretorio selecionado")
 
 class Cadastro(customtkinter.CTkFrame):
-	def __init__(self, master, voltar_callback, Clientes):
+	def __init__(self, master, voltar_callback):
 		super().__init__(master)
-		self.Clientes = Clientes
 		self.voltar_callback = voltar_callback
 		self.create_widgets()
+		self.carregar_dados()
+	
+	def carregar_dados(self):
+		if os.path.isfile('Clientes.json'):
+			with open('Clientes.json', 'r', encoding='utf-8') as arq:
+				self.Clientes = json.load(arq)
+		else:
+			with open('Clientes.json', 'w', encoding='utf-8') as arq:
+				self.Clientes = {"12.345.678/0001-23": "CLIENTE EXEMPLO"}
+				json.dump(self.Clientes,arq)
+			return
 
 	def create_widgets(self):
 		self.leftFrameCadastro = customtkinter.CTkFrame(self, corner_radius=0, fg_color='transparent')
@@ -596,16 +642,8 @@ class App:
 		self.janela.title("Organizador de Diretórios")
 		self.janela.resizable(False, False)
 
-		if os.path.isfile('Clientes.json'):
-			with open('Clientes.json', 'r', encoding='utf-8') as arq:
-				self.Clientes = json.load(arq)
-		else:
-			self.Clientes = {"CNPJ Exemplo": "Cliente Exemplo"}
-			with open('Clientes.json', 'w', encoding='utf-8') as arq:
-				json.dump(self.Clientes, arq)
-
 		self.frame_menu_principal = MenuPrincipal(self.janela, self.abrir_cadastro, self.abrir_historico,self.abrir_estruturacao)
-		self.frame_cadastro = Cadastro(self.janela, self.voltar_menu,self.Clientes)
+		self.frame_cadastro = Cadastro(self.janela, self.voltar_menu)
 		self.frame_historico = Historico(self.janela, self.voltar_menu)
 		self.frame_estrutura = GerenciadorCategorias(self.janela, self.voltar_menu)
 
