@@ -283,14 +283,17 @@ class MenuPrincipal(customtkinter.CTkFrame):
 		self.abrir_cadastro_callback = abrir_cadastro_callback
 		self.abrir_historico_callback = abrir_historico_callback
 		self.abrir_Estruturacao_callback = abrir_estruturacao_callback
-		'''if os.path.isfile('Historico.json'):
+		self.dados_tmp = {}
+		self.Historico = {}
+
+		if os.path.isfile('Historico.json'):
 			with open('Historico.json', 'r', encoding='utf-8') as arq:
 				self.Historico = json.load(arq)
 				arq.close()
 		else:
-			self.Historico = {f"{strftime("%d/%m/%Y")}": ["Exemplo Historico"]}
+			self.Historico = {f"{strftime("%m/%Y")}": ["Exemplo Historico"]}
 			with open('Historico.json', 'w', encoding='utf-8') as arq:
-				json.dump("{}", arq)'''
+				json.dump(self.Historico, arq)
 		
 
 		self.create_widgets()
@@ -306,35 +309,59 @@ class MenuPrincipal(customtkinter.CTkFrame):
 		# Botões do menu
 		self.Bt_cadastro = customtkinter.CTkButton(self.leftFrameMenu, text="Cadastro", command=self.abrir_cadastro_callback)
 		self.Bt_historico = customtkinter.CTkButton(self.leftFrameMenu, text="Histórico", command=self.abrir_historico_callback)
-		self.Bt_Estruturacao = customtkinter.CTkButton(self.leftFrameMenu, text="Estruturação", command=self.abrir_Estruturacao_callback,fg_color="red")
+		self.Bt_Estruturacao = customtkinter.CTkButton(self.leftFrameMenu, text="Estruturação", command=self.abrir_Estruturacao_callback,fg_color="#3AABA3")
 		self.Bt_organizar = customtkinter.CTkButton(self.leftFrameMenu, text="Organizar", command=self.organizar,fg_color="green")
+		self.Bt_desfazer = customtkinter.CTkButton(self.leftFrameMenu, text="Desfazer", command=self.desfazer,fg_color="#FF0A00",state="disabled")
 		
 		self.Bt_cadastro.grid(row=0, padx=10, pady=10)
 		self.Bt_historico.grid(row=1, padx=10, pady=10)
 		self.Bt_Estruturacao.grid(row=2, padx=10, pady=10)
 		self.Bt_organizar.grid(row=3, padx=10, pady=10)
+		self.Bt_desfazer.grid(row=4, padx=10, pady=10)
+
+		self.Bt_desfazer.grid_remove()
 
 		# Listbox e barra de progresso
-		self.progressbar = customtkinter.CTkProgressBar(self.rightFrameMenu, progress_color="#0ACF00", orientation='horizontal')
+		self.progressbar = customtkinter.CTkProgressBar(self.rightFrameMenu, progress_color="#0ACF00", orientation='horizontal',mode="determinate")
+		self.progressbar.set(0.0)
 		self.listbox = Listbox(self.rightFrameMenu, width=150, height=15)
+		
 		
 		self.progressbar.pack(padx=10, pady=10,fill='x', expand=1)
 		self.listbox.pack(padx=10, pady=10)
 
+	def desfazer(self):
+		self.progressbar.set(0)
+		for arq,dados in self.dados_tmp.items():
+			self.progressbar.set((1/len(self.dados_tmp.keys())+self.progressbar.get()))
+
+			if os.path.exists(f"{dados[0]}"):
+				os.rename(dados[1],f"{dados[0]}/{arq}")
+			else:
+				os.makedirs(dados[0])
+				os.rename(dados[1],f"{dados[0]}/{arq}")
+				
+			self.listbox.insert(END,f"{arq} Retornado a para {dados[0]}/{arq}")
+			if strftime("%m/%Y") in self.Historico.keys():
+				self.Historico[strftime("%m/%Y")].append(f"Dia {strftime("%d")} {arq} Retornado a para {dados[0]}/{arq}")
+			else:
+				self.Historico[strftime("%m/%Y")] = [f"Dia {strftime("%d")} {arq} Retornado a para {dados[0]}/{arq}"]
+
+			self.master.update()
+			self.master.update_idletasks()
+		self.Bt_desfazer.grid_remove()
+		self.salvar_dados_historico()
+
+	def salvar_dados_historico(self):
+		with open('Historico.json', 'w', encoding='utf-8') as arq:
+			json.dump(self.Historico, arq)
+			arq.close()
+
+
 	def organizar(self):
 		self.Diretorio = askdirectory()
 		self.PdfProcessados = {}
-		self.PdfNaoReconhecidos = {}		
-
-		tipos_documento = {
-					"BOLETO BENEFICIO SOCIAL": ["Beneficio Social Familiar"],
-					"FGTS Digital": ["GFD", "Guia do FGTS Digital"],
-					"Simples Nacional": ["Simples Nacional"],
-					"RECEITA FEDERAIS": ["Receitas Federais"],
-					"ICMS": ["ICMS", "ICMS - ANTECIPACAO PARCIAL"],
-
-					# Adicione mais tipos e palavras-chave conforme necessário
-				}
+		self.PdfNaoReconhecidos = {}
 
 		if self.Diretorio != "":
 			tmparquivos = [f for f in os.listdir(self.Diretorio) if os.path.isfile(os.path.join(self.Diretorio, f))]
@@ -348,6 +375,8 @@ class MenuPrincipal(customtkinter.CTkFrame):
 				else:
 					messagebox.showwarning("Alerta","Antes de prosseguir crie a estrutura")
 					return
+				if not os.path.exists(self.Diretorio_Principal):
+					messagebox.showerror("Erro","Diretorio principal foi excluido")
 
 				if os.path.isfile('Clientes.json'):
 					with open('Clientes.json', 'r', encoding='utf-8') as arq:
@@ -355,14 +384,23 @@ class MenuPrincipal(customtkinter.CTkFrame):
 				else:
 					messagebox.showwarning("Alerta","Antes de prosseguir cadastre os clientes")
 					return
-
+				#ETAPA 1-----------------------------------------
 				for arq in arquivos:
 					tmpDiretorio = self.Diretorio + "/" + arq
 					print(f"Analisando PDF: {tmpDiretorio}")
+
+					self.progressbar.set((0.5/len(arquivos)+self.progressbar.get()))
+					self.master.update()
+					self.master.update_idletasks()
+
+					#ETAPA 2-----------------------------------------
 					# Tentar abrir e ler o PDF
 					try:
 						with open(tmpDiretorio, "rb") as pdf_file:
 							pdf_reader = PyPDF2.PdfReader(pdf_file)
+							infodate = pdf_reader.metadata['/CreationDate'].split(":")[1]
+							infodate = f"{infodate[6:8]}-{infodate[4:6]}-{infodate[0:4]}"
+
 							texto = pdf_reader.pages[0].extract_text()
 							pdf_file.close()
 					except Exception as e:
@@ -383,9 +421,14 @@ class MenuPrincipal(customtkinter.CTkFrame):
 							print(f"Cliente identificado: {nome}")
 							break
 
-					# Identificar o tipo de documento com base nas palavras-chave
+					# CRIANDO UM SEGUNDO DICIONARIO PARA RODAR OS DADOS
+					self.new_estrutura = {}
+					for subdict in self.estrutura.values(): 
+						for chave, valor in subdict.items(): 
+							self.new_estrutura[chave] = valor
+
 					tipo_documento_identificado = ''
-					for tipo, keywords in tipos_documento.items():
+					for tipo, keywords in self.new_estrutura.items():
 						if any(keyword.lower() in texto.lower() for keyword in keywords):
 							tipo_documento_identificado = tipo
 							print(f"Tipo de documento identificado: {tipo}")
@@ -401,14 +444,14 @@ class MenuPrincipal(customtkinter.CTkFrame):
 					else:
 						print(f"Cliente não identificado para o arquivo '{arq}'.")
 						self.PdfNaoReconhecidos[arq] = {"Cliente":"","Doc Type":tipo_documento_identificado}
-
-
+				#ETAPA 3-----------------------------------------
 				print("\033[H\033[2J")
 				for chave in self.PdfProcessados:
 					print(chave)
 					print(self.PdfProcessados[chave])
+				
+				#ETAPA 4-----------------------------------------
 				## Leitura Feita arquivos marcados
-
 				if len(self.PdfNaoReconhecidos.keys()) >= 1:
 					TextoTmp = "Os Seguintes Arquivos não foram reconhecidos devido a não reconhecimento de: "
 					for arq in self.PdfNaoReconhecidos.keys():
@@ -430,26 +473,54 @@ class MenuPrincipal(customtkinter.CTkFrame):
 
 					if Resposta == "no":
 						return
-					
 
+				#ETAPA 5-----------------------------------------
+				##self.progressbar.configure(max=len(arquivos/2))
+				##INICIO DA 2º contagem
 				for arq in self.PdfProcessados.keys():
+					self.progressbar.set((0.5/len(self.PdfProcessados.keys())+self.progressbar.get()))
+					self.master.update()
+					self.master.update_idletasks()
+
+
 					dirTypeDoc = self.PdfProcessados[arq]["Doc Type"]
 					dirClient = self.PdfProcessados[arq]["Cliente"]
 					tmpdirreferente = "".join(x for x in self.estrutura.keys() if self.PdfProcessados[arq]["Doc Type"] in self.estrutura[x])
-					if os.path.exists(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}"):
-							os.rename(self.Diretorio + "/" + arq,f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{arq}")
+
+					if os.path.exists(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}/{arq}"):
+						os.rename(self.Diretorio + "/" + arq,f"{self.Diretorio}/1{arq}")
+						arq = f"1{arq}"
+						while os.path.exists(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}/{arq}"):
+							arqtmpold = arq
+							arq = f"{(int(arq[0])+1)}"
+							os.rename(self.Diretorio + "/" + arqtmpold,f"{self.Diretorio}/{arq}")
+
+
+					if os.path.exists(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}"):
+						os.rename(self.Diretorio + "/" + arq,f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}/{arq}")
 					else:
-						os.makedirs(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}")
-						os.rename(self.Diretorio + "/" + arq,f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{arq}")
+						os.makedirs(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}")
+						os.rename(self.Diretorio + "/" + arq,f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}/{arq}")
 						
 					self.listbox.insert(END,f"{arq} Transferido para {self.Diretorio_Principal + "/" + arq}")
+
+					if strftime("%m/%Y") in self.Historico.keys():
+						self.Historico[strftime("%m/%Y")].append(f"Dia {strftime("%d")} {arq} Transferido para {self.Diretorio_Principal + "/" + arq}")
+					else:
+						self.Historico[strftime("%m/%Y")] = [f"Dia {strftime("%d")} {arq} Transferido para {self.Diretorio_Principal + "/" + arq}"]
+					#salvando dados para "desfazer"
+					self.dados_tmp[arq] = [f"{self.Diretorio}",f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}/{arq}"]
 					self.master.update()
 					self.master.update_idletasks()
 				
-				self.progressbar
+				self.Bt_desfazer.configure(state='normal')
+				self.Bt_desfazer.grid(row=4, padx=10, pady=10)
+				self.salvar_dados_historico()
 				
 			else:
 				messagebox.showerror("Erro","Não há pdf's no diretorio selecionado")
+		else:
+				messagebox.showerror("Erro","Selecione o diretorio corretamente")
 
 class Cadastro(customtkinter.CTkFrame):
 	def __init__(self, master, voltar_callback):
@@ -563,8 +634,13 @@ class Historico(customtkinter.CTkFrame):
 	def __init__(self, master, voltar_callback):
 		super().__init__(master)
 		self.voltar_callback = voltar_callback
+		self.Historico = {}
 		self.create_widgets()
-		print(master.title())
+
+		self.carregar_dados()
+		if strftime("%m/%Y") in self.Historico.keys():
+			for i in self.Historico[strftime("%m/%Y")]:
+				self.listbox_Historico.insert(END,i)
 
 	def create_widgets(self):
 		self.leftFrameHisto = customtkinter.CTkFrame(self, corner_radius=0, fg_color='transparent')
@@ -573,15 +649,13 @@ class Historico(customtkinter.CTkFrame):
 		self.EntryFrameHisto = customtkinter.CTkFrame(self.leftFrameHisto, fg_color='#6B6B6B')
 		
 		self.LabelDt = customtkinter.CTkLabel(self.EntryFrameHisto, text='Data', anchor='center')
-		self.LabelDia = customtkinter.CTkLabel(self.EntryFrameHisto, text='Dia')
-		self.EntryDiaHistorico = customtkinter.CTkEntry(self.EntryFrameHisto, width=45,validate='key',validatecommand=(self.master.register(self.ValidEntrys), '%P'))
 		self.LabelMes = customtkinter.CTkLabel(self.EntryFrameHisto, text='Mês')
 		self.EntryMesHistorico = customtkinter.CTkEntry(self.EntryFrameHisto, width=45,validate='key',validatecommand=(self.master.register(self.ValidEntrys), '%P'))
 		self.LabelAno = customtkinter.CTkLabel(self.EntryFrameHisto, text='Ano')
 		self.EntryAnoHistorico = customtkinter.CTkEntry(self.EntryFrameHisto, width=45,validate='key',validatecommand=(self.master.register(self.ValidEntrys), '%P'))
 		self.Bt_Pesquisar = customtkinter.CTkButton(self.EntryFrameHisto, text="Pesquisar",command=self.Pesq_Historico)
 		self.Bt_voltar_Historico = customtkinter.CTkButton(self.leftFrameHisto, text="Voltar", command=self.voltar_callback)
-		self.listbox_Historico = Listbox(self.rightFrameHisto, width=60, height=15)
+		self.listbox_Historico = Listbox(self.rightFrameHisto, width=200, height=40)
 
 		self.leftFrameHisto.pack(fill='y', side='left', expand=1, padx=10, pady=10)
 		self.rightFrameHisto.pack(padx=10, pady=10)
@@ -589,8 +663,6 @@ class Historico(customtkinter.CTkFrame):
 		
 		self.LabelDt.pack()
 		self.Bt_Pesquisar.pack(pady=5, side='bottom')
-		self.LabelDia.pack(padx=5, side="left")
-		self.EntryDiaHistorico.pack(side="left")
 		self.LabelMes.pack(padx=5, side="left")
 		self.EntryMesHistorico.pack(side="left")
 		self.LabelAno.pack(padx=5, side="left")
@@ -599,21 +671,29 @@ class Historico(customtkinter.CTkFrame):
 		self.Bt_voltar_Historico.pack(side="bottom", padx=10, pady=10)
 		self.listbox_Historico.pack()
 
-	def Pesq_Historico():
-		#TODO FUNÇÃO PARA BUSCAR DADOS NO HISTORICO CASO HAJA
-		pass
+	def Pesq_Historico(self):
+		self.listbox_Historico.delete(0,END)
+		if f"{self.EntryMesHistorico.get()}/{self.EntryAnoHistorico.get()}" in self.Historico.keys():
+			for i in self.Historico[f"{self.EntryMesHistorico.get()}/{self.EntryAnoHistorico.get()}"]:
+				self.listbox_Historico.insert(END,i)
+		else:
+			self.listbox_Historico.insert(END,"DATA NÃO ENCONTRADA")
+
+
+	def carregar_dados(self):
+		if os.path.isfile('Historico.json'):
+			with open('Historico.json', 'r', encoding='utf-8') as arq:
+				self.Historico = json.load(arq)
+				arq.close()
+		else:
+			self.Historico = {f"{strftime("%m/%Y")}": ["Exemplo Historico"]}
+			with open('Historico.json', 'w', encoding='utf-8') as arq:
+				json.dump(self.Historico, arq)
 
 	def ValidEntrys(self,new_value):
 		if new_value.isdigit():
 			match (self.master.focus_get().master):
 				#switch em python 
-				case self.EntryDiaHistorico:
-					#Caso esteja na entry do Dia 
-					if int(new_value) <= 31:
-						return True
-					else:
-						return False
-					
 				case self.EntryMesHistorico:
 					#Caso esteja na entry do Mes 
 					if int(new_value) <= 12:
