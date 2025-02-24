@@ -1,3 +1,5 @@
 *.json
 build/
 setup.py
+main.spec
+OrganizePDF.spec
