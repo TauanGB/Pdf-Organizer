@@ -1,7 +1,7 @@
-#TODO colocar nome de arquivo para "OrganizePDF"
-
-import customtkinter
-from tkinter import END, Listbox
+import customtkinter 
+from customtkinter import CTkImage
+from PIL import Image
+from tkinter import END, Listbox,Menu
 from tkinter.filedialog import askdirectory
 from tkinter import messagebox
 import PyPDF2
@@ -53,54 +53,59 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 
 	def create_widgets(self):
 		# Componentes principais
-		self.titulo = customtkinter.CTkLabel(self, text="Gerenciar Categorias e Subcategorias")  # Título
-		self.label_categoria = customtkinter.CTkLabel(self, text="Categoria (Pasta):")  # LABEL CATEGORIA
-		self.entrada_categoria = customtkinter.CTkEntry(self)  # ENTRY CATEGORIA
-		self.label_subcategoria = customtkinter.CTkLabel(self, text="Subcategoria (PDF):")  # LABEL SUBCATEGORIA
-		self.entrada_subcategoria = customtkinter.CTkEntry(self)  # ENTRY SUBCATEGORIA
-		self.btn_add_categoria = customtkinter.CTkButton(self, text="+", command=self.adicionar_categoria, width=40)  # BT ADICIONAR CATEGORIA
-		self.btn_add_subcategoria = customtkinter.CTkButton(self, text="+", command=self.adicionar_subcategoria, width=40)  # BT ADICIONAR SUBCATEGORIA
-		self.btn_remover_categoria = customtkinter.CTkButton(self, text="-", command=self.remover_categoria, width=40)  # BT REMOVER CATEGORIA
-		self.btn_remover_subcategoria = customtkinter.CTkButton(self, text="-", command=self.remover_subcategoria, width=40)  # BT REMOVER SUBCATEGORIA
-		self.lista_categorias = Listbox(self, height=10, fg="black")  # LISTA DE CATEGORIAS
-		self.lista_categorias.bind("<<ListboxSelect>>", self.mostrar_detalhes)  # Binding para exibir detalhes
+		self.titulo = customtkinter.CTkLabel(self, text="ESTRUTURA DE PASTAS\nselecione para apagar")  # Título
+		self.lista_Estrutura = Listbox(self, width=40, fg="black")  # LISTA DE CATEGORIAS
+		self.lista_Estrutura.bind("<<ListboxSelect>>", self.mostrar_detalhes)  # Binding para exibir detalhes
+	
+		self.btn_voltar = customtkinter.CTkButton(self, text="Voltar", command=self.retornar_menu)#BT PRA SALVAR AND VOLTAR
 		
-		self.alerta = customtkinter.CTkLabel(self, text="FAVOR NÃO VOLTAR OU FECHAR A JANELA SEM SALVAR", text_color='red')  #ALERTA
-		self.btn_voltar = customtkinter.CTkButton(self, text="Voltar", command=self.retornar_menu, width=40)#BT PRA SALVAR AND VOLTAR 
+		self.Diretorio_Principal = ''#STRING COPM NOME DO DIRETORIO INICIAL 
+		self.alterar_diretorio = customtkinter.CTkButton(self, text="Alterar Diretorio Matriz", command=self.Select_Diretorio)
 		
-		self.Diretorio_Principal = ''
-		self.Diretorio_Principal_label = customtkinter.CTkLabel(self,text=self.Diretorio_Principal ,textvariable=self.Diretorio_Principal)  # LABEL SUBCATEGORIA
-		self.Selecionar_diretorio = customtkinter.CTkButton(self, text="Alterar Diretorio Padrão", command=self.Select_Diretorio)#BT PRA SALVAR AND VOLTAR 
+		self.remove_icone = CTkImage(light_image=Image.open("trash-can.png"))
+		self.remover = customtkinter.CTkButton(self,text='',image=self.remove_icone,width=15,fg_color="white", state="disabled",command=self.remover_item)
+		self.adicionar_pasta = customtkinter.CTkButton(self, text="Add Pasta", command=self.PastaTop)
+		self.adicionar_pdf = customtkinter.CTkButton(self, text="Add Pdf", command=self.PastaPdf)
 
+		self.rowconfigure(1,weight=1)
 
 		# Layout
-		self.titulo.grid(row=0, column=1, columnspan=5, pady=10)  # TÍTULO
-		self.label_categoria.grid(row=1, column=1, padx=10, pady=5)  # LABEL CATEGORIA
-		self.entrada_categoria.grid(row=1, column=2, padx=10, pady=5, sticky="we")  # ENTRY CATEGORIA
-		self.label_subcategoria.grid(row=2, column=1, padx=10, pady=5)  # LABEL SUBCATEGORIA
-		self.entrada_subcategoria.grid(row=2, column=2, padx=10, pady=5,sticky="we")  # ENTRY SUBCATEGORIA
-		self.btn_add_categoria.grid(row=1, column=5, padx=10, pady=10)  # BT ADICIONAR CATEGORIA
-		self.btn_add_subcategoria.grid(row=2, column=5, padx=10, pady=10)  # BT ADICIONAR SUBCATEGORIA
-		self.btn_remover_categoria.grid(row=1, column=6, padx=10, pady=10)  # BT REMOVER CATEGORIA
-		self.btn_remover_subcategoria.grid(row=2, column=6, padx=10, pady=10)  # BT REMOVER SUBCATEGORIA
-		self.lista_categorias.grid(row=3, column=1, columnspan=2, pady=10, sticky="nsew")  # LISTA CATEGORIAS
-		self.alerta.grid(row=4, column=1,columnspan=4, padx=5,pady=5, sticky="nsew")  #ALERTA
-		self.btn_voltar.grid(row=5, column=5, columnspan=6,sticky="ew",padx=5,pady=5)
+		self.titulo.grid(row=0, column= 0, pady=5,padx=5,sticky="ns")  # TÍTULO
+		self.lista_Estrutura.grid(row=1,rowspan=3, column= 0,padx=5,pady=5, sticky="ns")  # LISTA CATEGORIA
 		# Frame adicional à direita
-		self.frame_detalhes = FrameDetalhes(self)
-		self.frame_detalhes.grid(row=0, rowspan=4, column=0, padx=20, pady=10, sticky="nsew")
+		self.frame_detalhes = self.FrameDetalhes(self)
+		self.frame_detalhes.grid(row=0,rowspan=2, column=2,columnspan=4, padx=20, pady=10, sticky="nsew")
 
-		self.Diretorio_Principal_label.grid(row=5, column=0, padx=20, pady=10, sticky="nsew")
-		self.Selecionar_diretorio.grid(row=5, column=1, padx=20, pady=10, sticky="nsew")
+		self.remover.grid(row=2, column= 1, padx=5, pady=5)
+		self.alterar_diretorio.grid(row=2, column= 2, padx=5, pady=5, sticky="nsew")
+		self.adicionar_pasta.grid(row=2, column= 3, padx=5, pady=5, sticky="nsew")
+		self.adicionar_pdf.grid(row=3, column= 2, padx=5, pady=5, sticky="nsew")
+		self.btn_voltar.grid(row=3, column=3,padx=5,pady=5)
 		
 		# Dicionário para armazenar as categorias e subcategorias
 		self.categorias = {}
 		self.carregar_dados()
+		self.TopLevel_pasta = None
+		self.TopLevel_pdf = None
+
+	def PastaTop(self):
+		if self.TopLevel_pasta is None or not self.TopLevel_pasta.winfo_exists():
+			self.TopLevel_pasta = self.TopLevel_Pasta(self)
+
+		self.TopLevel_pasta.focus()
+		self.master.iconify()
+	
+	def PastaPdf(self):
+		if self.TopLevel_pdf is None or not self.TopLevel_pdf.winfo_exists():
+			self.TopLevel_pdf = self.TopLevel_Pdf(self)
+
+		self.TopLevel_pdf.focus()
+		self.master.iconify()
 
 	def Select_Diretorio(self):
 		self.Diretorio_Principal = askdirectory()
-		self.Diretorio_Principal_label.configure(text=self.Diretorio_Principal.split("/")[-1])
 		self.salvar_dados()
+		self.atualizar_lista()
 
 	def retornar_menu(self):
 		self.salvar_dados()
@@ -110,7 +115,6 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 		if os.path.exists('estrutura.json'):
 			with open('estrutura.json', 'r') as file:
 				self.categorias,self.Diretorio_Principal = json.load(file)
-			self.Diretorio_Principal_label.configure(text=self.Diretorio_Principal.split("/")[-1])
 			self.atualizar_lista()
 
 	def salvar_dados(self):
@@ -118,164 +122,310 @@ class GerenciadorCategorias(customtkinter.CTkFrame):
 		with open('estrutura.json', 'w') as file:
 			json.dump([self.categorias,self.Diretorio_Principal], file, indent=4)
 
-	def adicionar_categoria(self):
-		nome_categoria = self.entrada_categoria.get()
-		if nome_categoria:
-			if nome_categoria not in self.categorias:
-				self.categorias[nome_categoria] = {}  # Cada categoria contém um dicionário
-				self.atualizar_lista()
-				self.salvar_dados()
-				self.carregar_dados()
-			else:
-				messagebox.showwarning("Aviso", "Essa categoria já existe.")
-		else:
-			messagebox.showerror("Erro", "O nome da categoria não pode estar vazio.")
-
-	def adicionar_subcategoria(self):
-		nome_categoria = self.entrada_categoria.get()
-		nome_subcategoria = self.entrada_subcategoria.get()
-		if nome_categoria and nome_subcategoria:
-			if nome_categoria in self.categorias:
-				if nome_subcategoria not in self.categorias[nome_categoria]:
-					self.categorias[nome_categoria][nome_subcategoria] = []
+	#OBSOLETOS-----------------------------------------------------------------------
+	def adicionar_categoria(self,nome_categoria, nome_categoriaPai = None):
+		self.master.focus()
+		if nome_categoria != "":
+			if nome_categoriaPai == 'EMPRESA':
+				if nome_categoria not in self.categorias:
+					self.categorias[nome_categoria] = {}  # Cada categoria contém um dicionário
 					self.atualizar_lista()
 					self.salvar_dados()
 					self.carregar_dados()
-					self.entrada_subcategoria.delete(0, "end")
 				else:
-					messagebox.showerror("Erro", "Essa SubCategoria Ja existe.")
+					messagebox.showwarning("Aviso", "Essa categoria já existe.")
 			else:
-				messagebox.showerror("Erro", "A categoria especificada não existe.")
+				if nome_categoria not in self.categorias[nome_categoriaPai].keys():
+					self.categorias[nome_categoriaPai][nome_categoria] = {}# Cada categoria contém um dicionário
+					self.atualizar_lista()
+					self.salvar_dados()
+					self.carregar_dados()
+				else:
+					messagebox.showwarning("Aviso", "Essa subcategoria já existe.")
 		else:
-			messagebox.showerror("Erro", "Os campos de categoria e subcategoria não podem estar vazios.")
+			messagebox.showerror("Erro", "O nome da categoria não pode estar vazio.")
 
-	def remover_categoria(self):
-		nome_categoria = self.entrada_categoria.get()
-		if nome_categoria in self.categorias:
-			del self.categorias[nome_categoria]
+	def adicionar_subcategoria(self,pastaPai,nome_pdf,palavraChave1,palavraChave2,palavraChave3):
+		if pastaPai and nome_pdf:
+			if pastaPai == "EMPRESA":
+				if nome_pdf not in self.categorias.keys():
+					self.categorias[nome_pdf] = [palavraChave1,palavraChave2,palavraChave3]
+					self.atualizar_lista()
+					self.salvar_dados()
+					self.carregar_dados()
+				else:
+					messagebox.showerror("Erro", "Esse Tipo de Pdf Ja existe.")
+			elif pastaPai in self.categorias.keys():
+				#verifica se existe a pasta pai referente
+				if nome_pdf not in self.categorias[pastaPai].keys():
+					#verifica se o tipo de pdf n ja existe
+					self.categorias[pastaPai][nome_pdf] = [palavraChave1,palavraChave2,palavraChave3]
+					self.atualizar_lista()
+					self.salvar_dados()
+					self.carregar_dados()
+				else:
+					messagebox.showerror("Erro", "Esse Tipo de Pdf Ja existe.")
+			elif pastaPai not in self.categorias:#verifica se existe como subpasta
+				pastaAcima,pastaPai = [i.strip() for i in pastaPai.split(" - ")]
+				if nome_pdf not in self.categorias[pastaAcima].keys():
+					self.categorias[pastaAcima][pastaPai][nome_pdf] = [palavraChave1,palavraChave2,palavraChave3]
+					self.atualizar_lista()
+					self.salvar_dados()
+					self.carregar_dados()
+				else:
+					messagebox.showerror("Erro", "Esse Tipo de Pdf Ja existe.")
+
+			else:
+				messagebox.showerror("Erro", "Chama Tauan.")
+		else:
+			messagebox.showerror("Erro", "Os campos de Pasta e Pdf não podem estar vazios.")
+
+	def remover_item(self):
+		selection = self.lista_Estrutura.curselection()
+		item = self.lista_Estrutura.get(selection[0]).split('-')[-1]
+		if item in self.categorias.keys():
+			self.frame_detalhes.desabilitarLista()
+			del self.categorias[item]
 			self.atualizar_lista()
 			self.salvar_dados()
-			self.entrada_categoria.delete(0, "end")
-			self.entrada_subcategoria.delete(0, "end")
 		else:
-			messagebox.showwarning("Aviso", "Categoria não encontrada.")
-
-	def remover_subcategoria(self):
-		nome_categoria = self.entrada_categoria.get()
-		nome_subcategoria = self.entrada_subcategoria.get()
-		if nome_categoria in self.categorias:
-			if nome_subcategoria in self.categorias[nome_categoria]:
-				del self.categorias[nome_categoria][nome_subcategoria]
-				self.atualizar_lista()
-				self.salvar_dados()
-				self.entrada_subcategoria.delete(0, "end")
-			else:
-				messagebox.showwarning("Aviso", "Subcategoria não encontrada.")
-		else:
-			messagebox.showerror("Erro", "A categoria especificada não existe.")
+			for pasta in self.categorias.keys():
+				if type(self.categorias[pasta]) == list:
+					continue
+				elif item in self.categorias[pasta].keys():
+					self.frame_detalhes.desabilitarLista()
+					del self.categorias[pasta][item]
+					self.atualizar_lista()
+					self.salvar_dados()
+					return
+				
+				else:
+					for subpasta in self.categorias[pasta].keys():
+						if type(self.categorias[pasta][subpasta]) == list:
+							continue
+						elif type(self.categorias[pasta][subpasta]) == dict:
+							if item in self.categorias[pasta][subpasta].keys():
+								self.frame_detalhes.desabilitarLista()
+								del self.categorias[pasta][subpasta][item]
+								self.atualizar_lista()
+								self.salvar_dados()
+								return
+								
+							else:
+								continue
+					
+	# FIM DOS OBSOLETOS-----------------------------------------------------------------------
 
 	def atualizar_lista(self):
 		"""Atualiza a exibição de categorias e subcategorias na listbox."""
-		self.lista_categorias.delete(0, "end")
+		self.lista_Estrutura.delete(0, "end")
+		self.lista_Estrutura.insert("end", f"Diretorio Matriz : {(self.Diretorio_Principal).split("/")[-1]}")
+		self.lista_Estrutura.insert("end", f"EMPRESA")
 		for categoria, subcategorias in self.categorias.items():
-			self.lista_categorias.insert("end", f"Categoria -- {categoria}")
-			for sub, palavras_chave in subcategorias.items():
-				self.lista_categorias.insert("end", f"  - {sub} ({len(palavras_chave)} palavras-chave)")
-
+			if type(subcategorias) == dict:
+				self.lista_Estrutura.insert("end", f" |--PASTA--{categoria}")
+				for sub, sub_item in subcategorias.items():
+					if type(sub_item) == list:
+						self.lista_Estrutura.insert("end", f" |    |--PDF--{sub}")
+					elif type(sub_item) == dict:
+						self.lista_Estrutura.insert("end", f" |    |--SUBPASTA--{sub}")
+						for subniv_pdf, subnivel_item in sub_item.items():
+							if type(subnivel_item) == list:
+								self.lista_Estrutura.insert("end", f" |    |    |--PDF--{subniv_pdf}")
+							else:
+								messagebox.showerror("Rapaz","Chama Tauan que tem algo errado ai")
+			elif type(subcategorias) == list:
+				self.lista_Estrutura.insert("end", f" |--PDF--{categoria}")
+			
+			else:
+				messagebox.showerror("Rapaz","Chama Tauan que tem algo errado ai")
+						
 	def mostrar_detalhes(self, event):
 		"""Exibe detalhes da subcategoria selecionada no FrameDetalhes."""
-		selection = self.lista_categorias.curselection()
+		selection = self.lista_Estrutura.curselection()
 		if selection:
-			texto_selecionado = self.lista_categorias.get(selection[0])
-			if "Categoria -- " in texto_selecionado:
-				categoria = texto_selecionado.split(" -- ")[1]
-				self.frame_detalhes.mostrar_detalhes(categoria, None, self.categorias)
-			
-				self.entrada_categoria.delete(0,"end")
-				self.entrada_categoria.insert("end",categoria)
-				self.entrada_subcategoria.delete(0,"end")
-
-			elif " - " in texto_selecionado:
-				subcategoria = texto_selecionado.replace(" - ","").split("(")[0].strip()
-				for key in self.categorias.keys():
-					#obtendo categoria referente
-					if subcategoria in self.categorias[key].keys():
-						categoria = key
-						break
-				
-				self.entrada_categoria.delete(0,"end")
-				self.entrada_categoria.insert("end",categoria)
-				
-				self.entrada_subcategoria.delete(0,"end")
-				self.entrada_subcategoria.insert("end",subcategoria)
-
-				self.frame_detalhes.mostrar_detalhes(categoria, subcategoria, self.categorias)
-
-class FrameDetalhes(customtkinter.CTkFrame):
-	def __init__(self, parent):
-		super().__init__(parent)
-
-		self.create_widgets()
-
-	def create_widgets(self):
-		self.label_detalhes = customtkinter.CTkLabel(self, text="Detalhes da Subcategoria")
-		self.lista_palavras_chave = Listbox(self)
-		self.label_Palavra = customtkinter.CTkLabel(self, text='Palavra-chave',fg_color='transparent')
-		self.entrada_palavra_chave = customtkinter.CTkEntry(self, width=180)
-		self.btn_add_palavra = customtkinter.CTkButton(self, text="Adicionar", command=self.adicionar_palavra_chave,width=70)
-		self.btn_remover_palavra = customtkinter.CTkButton(self, text="Remover", command=self.
-		remover_palavra_chave,width=70)
-		
-		self.lista_palavras_chave.bind("<<ListboxSelect>>", self.editar_palavra)
-		
-		self.label_detalhes.grid(row=0,column=0,columnspan=2,padx=10, pady=2)
-		self.lista_palavras_chave.grid(row=1,column=0,columnspan=2,padx=5,sticky='nswe')
-		self.label_Palavra.grid(row=2,column=0,columnspan=2)
-		self.entrada_palavra_chave.grid(row=3,column=0,columnspan=2,pady=5,padx=4)
-		self.btn_add_palavra.grid(row=4,column=0,pady=2)
-		self.btn_remover_palavra.grid(row=4,column=1,pady=2)
-
-	def mostrar_detalhes(self, categoria, subcategoria, categorias_dict):
-		self.categoria = categoria
-		self.subcategoria = subcategoria
-		self.categorias_dict = categorias_dict
-
-		# Limpa a lista de palavras-chave antes de exibir novas
-		self.lista_palavras_chave.delete(0, "end")
-		if subcategoria:
-			palavras_chave = categorias_dict[categoria][subcategoria]
-			for palavra in palavras_chave:
-				self.lista_palavras_chave.insert("end", palavra)
-
-	def editar_palavra(self,event):
-		selecao_cursor = self.lista_palavras_chave.curselection()
-
-		if len(selecao_cursor) >0:
-			self.entrada_palavra_chave.delete(0, "end")
-
-			self.entrada_palavra_chave.insert("end",self.lista_palavras_chave.get(selecao_cursor[0]))
-
-	def adicionar_palavra_chave(self):
-		palavra_chave = self.entrada_palavra_chave.get().upper()
-		if palavra_chave and self.subcategoria:
-			if palavra_chave not in self.categorias_dict[self.categoria][self.subcategoria]:
-				self.categorias_dict[self.categoria][self.subcategoria].append(palavra_chave)
-				
-				self.lista_palavras_chave.insert("end", palavra_chave)
-				self.master.salvar_dados()
-				self.entrada_palavra_chave.delete(0, "end")
+			texto_selecionado = self.lista_Estrutura.get(selection[0])
+			##RECONHECER CATEGORIA PARA TER DIRETORIO DO PDF EM QUESTAO E EXIBIR
+			if "PDF" in texto_selecionado:
+				self.remover.configure(fg_color='red',state='normal')
+				pdf = texto_selecionado.split("--")[-1]
+				if pdf in self.categorias.keys():
+					#VERIFICANDO SE N ESTA EM PASTA ALGUMA
+					categoria = None
+				else:
+					for pasta in self.categorias.keys():
+						if type(self.categorias[pasta]) == list:
+							continue
+						elif pdf in self.categorias[pasta].keys():
+							categoria = pasta
+							break
+						for subpasta in self.categorias[pasta]:
+							if type(self.categorias[pasta][subpasta]) == dict:
+								if pdf in self.categorias[pasta][subpasta].keys():
+									categoria = [pasta,subpasta]
+								break
+				self.frame_detalhes.habilitarLista()
+				self.frame_detalhes.mostrar_detalhes(categoria, pdf, self.categorias)
+			elif "PASTA" in texto_selecionado or "SUBPASTA" in texto_selecionado:
+				self.frame_detalhes.desabilitarLista()
+				self.remover.configure(fg_color='red',state='normal')
 			else:
-				messagebox.showwarning("Aviso", "Essa palavra-chave já existe.")
-			self.master.atualizar_lista()
+				self.frame_detalhes.desabilitarLista()
+				self.remover.configure(fg_color='white',state='disabled')
 
-	def remover_palavra_chave(self):
-		selecionado = self.lista_palavras_chave.curselection()
-		if selecionado and self.subcategoria:
-			palavra = self.lista_palavras_chave.get(selecionado)
-			self.categorias_dict[self.categoria][self.subcategoria].remove(palavra)
-			self.lista_palavras_chave.delete(selecionado)
-			self.master.salvar_dados()
-			self.master.atualizar_lista()
+	class FrameDetalhes(customtkinter.CTkFrame):
+		def __init__(self, parent):
+			super().__init__(parent)
+
+			self.create_widgets()
+
+		def create_widgets(self):
+			self.label_detalhes = customtkinter.CTkLabel(self, text="Palavras-chave Para reconhecimento de pdf")
+			self.lista_palavras_chave = Listbox(self)
+			self.label_Palavra = customtkinter.CTkLabel(self, text='Palavra-chave',fg_color='transparent')
+			self.entrada_palavra_chave = customtkinter.CTkEntry(self, width=180)
+			self.btn_add_palavra = customtkinter.CTkButton(self, text="Adicionar", command=self.adicionar_palavra_chave,width=70)
+			self.btn_remover_palavra = customtkinter.CTkButton(self, text="Remover", command=self.
+			remover_palavra_chave,width=70)
+			
+			self.lista_palavras_chave.bind("<<ListboxSelect>>", self.editar_palavra)
+			
+			self.label_detalhes.grid(row=0,column=0,columnspan=2,padx=10, pady=2)
+			self.lista_palavras_chave.grid(row=1,column=0,columnspan=2,padx=5,sticky='nswe')
+			self.label_Palavra.grid(row=2,column=0,columnspan=2)
+			self.entrada_palavra_chave.grid(row=3,column=0,columnspan=2,pady=5,padx=4)
+			self.btn_add_palavra.grid(row=4,column=0,pady=2)
+			self.btn_remover_palavra.grid(row=4,column=1,pady=2)
+
+		def desabilitarLista(self):
+			self.lista_palavras_chave.configure(state="disabled",background='#B5B5B5')
+		
+		def habilitarLista(self):
+			self.lista_palavras_chave.configure(state="normal",background='#FFFFFF')
+
+		def mostrar_detalhes(self, pasta, pdf, categorias_dict):
+			self.Pasta = pasta
+			self.Pdf = pdf
+			self.categorias_dict = categorias_dict
+
+			# Limpa a lista de palavras-chave antes de exibir novas
+			self.lista_palavras_chave.delete(0, "end")
+			if self.Pasta == None:
+				palavras_chave = categorias_dict[pdf]
+				for palavra in palavras_chave:
+					self.lista_palavras_chave.insert("end", palavra)
+
+			elif type(self.Pasta) == str:
+				palavras_chave = categorias_dict[pasta][pdf]
+				for palavra in palavras_chave:
+					self.lista_palavras_chave.insert("end", palavra)
+			elif type(self.Pasta) == list:
+				palavras_chave = categorias_dict[pasta[0]][pasta[1]][pdf]
+				for palavra in palavras_chave:
+					self.lista_palavras_chave.insert("end", palavra)
+
+		def editar_palavra(self,event):
+			selecao_cursor = self.lista_palavras_chave.curselection()
+
+			if len(selecao_cursor) >0:
+				self.entrada_palavra_chave.delete(0, "end")
+
+				self.entrada_palavra_chave.insert("end",self.lista_palavras_chave.get(selecao_cursor[0]))
+
+		def adicionar_palavra_chave(self):
+			palavra_chave = self.entrada_palavra_chave.get().upper()
+			if palavra_chave and self.Pdf:
+				if palavra_chave not in self.categorias_dict[self.Pasta][self.Pdf]:
+					self.categorias_dict[self.Pasta][self.Pdf].append(palavra_chave)
+					
+					self.lista_palavras_chave.insert("end", palavra_chave)
+					self.master.salvar_dados()
+					self.entrada_palavra_chave.delete(0, "end")
+				else:
+					messagebox.showwarning("Aviso", "Essa palavra-chave já existe.")
+				self.master.atualizar_lista()
+
+		def remover_palavra_chave(self):
+			selecionado = self.lista_palavras_chave.curselection()
+			if selecionado and self.Pdf:
+				palavra = self.lista_palavras_chave.get(selecionado)
+				self.categorias_dict[self.Pasta][self.Pdf].remove(palavra)
+				self.lista_palavras_chave.delete(selecionado)
+				self.master.salvar_dados()
+				self.master.atualizar_lista()
+
+	class TopLevel_Pasta(customtkinter.CTkToplevel):
+		def __init__(self, master):
+			super().__init__(master)
+			self.Pasta_create_widgets()
+
+		def Pasta_create_widgets(self) :
+			self.label_TituloCategoria = customtkinter.CTkLabel(self, text='Nome Da Pasta')
+			self.entry_TituloCategoria = customtkinter.CTkEntry(self,placeholder_text='Titulo')
+			self.label_Aviso = customtkinter.CTkLabel(self, text=' Caso a pasta seja uma subpasta, selecione a \n pasta pai abaixo', anchor="e",justify="left")
+			self.optionmenu_Value = customtkinter.StringVar(value='EMPRESA')
+			self.optionmenu_PastaPai = customtkinter.CTkOptionMenu(self,values=list([x for x in self.master.categorias.keys() if type(self.master.categorias[x]) == dict]),variable=self.
+			optionmenu_Value)
+			self.label_PastaPai = customtkinter.CTkLabel(self, text='Pasta Pai')
+			self.Button_confirm =  customtkinter.CTkButton(self,text='Adicionar',command=self.Pasta_Adicionar)
+
+			self.label_TituloCategoria.grid(row=0,column=0,sticky='w',padx=(5,2),pady=2)
+			self.entry_TituloCategoria.grid(row=0,column=1,padx=2,pady=2)
+			self.label_PastaPai.grid(row=2,column=0,sticky='w',padx=(5,2),pady=2)
+			self.optionmenu_PastaPai.grid(row=2,column=1,padx=2,pady=2)
+			self.label_Aviso.grid(row=1,column=0,columnspan=2,padx=2,sticky="NSEW",pady=2)
+			self.Button_confirm.grid(row=3,column=1,padx=2,pady=5)
+
+		def Pasta_Adicionar(self):
+			self.master.adicionar_categoria(self.entry_TituloCategoria.get(),self.optionmenu_Value.get())
+			self.destroy()
+			pass
+			#apenas adicionar pasta -old categoria- logo uma entry e um botao de voltar e outro de adicionar
+	
+	class TopLevel_Pdf(customtkinter.CTkToplevel):
+		def __init__(self, master):
+			super().__init__(master)
+			self.Pasta_create_widgets()
+
+		def Pasta_create_widgets(self) :
+			self.label_TituloCategoria = customtkinter.CTkLabel(self, text='Tipo do pdf')
+			self.entry_TituloCategoria = customtkinter.CTkEntry(self,placeholder_text='Tipo')
+			self.label_Aviso = customtkinter.CTkLabel(self, text='Necessita no minimo 3 palavra chave e selecione a pasta em que ficara o pdf',anchor="e")
+			self.label_PalavraChave = customtkinter.CTkLabel(self, text='Palavras chaves',anchor="e")
+			self.entry_PalavraChave_1 = customtkinter.CTkEntry(self,placeholder_text='Palavra Chave 1')
+			self.entry_PalavraChave_2 = customtkinter.CTkEntry(self,placeholder_text='Palavra Chave 2')
+			self.entry_PalavraChave_3 = customtkinter.CTkEntry(self,placeholder_text='Palavra Chave 3')
+
+			##for para pegar todas as pastas
+			Subclasses = []
+			for chave in self.master.categorias.keys():
+				Subclasses += [f"{chave} - {item}" for item in self.master.categorias[chave] if type(self.master.categorias[chave][item]) == dict]
+
+			self.optionmenu_Value = customtkinter.StringVar(value="EMPRESA")
+			self.optionmenu_PastaPai = customtkinter.CTkOptionMenu(self,values=list(self.master.categorias.keys())+ Subclasses,variable=self.
+			optionmenu_Value)
+			self.label_PastaPai = customtkinter.CTkLabel(self, text='Pasta Pai')
+			self.Button_confirm =  customtkinter.CTkButton(self,text='Adicionar',command=self.Pasta_Adicionar)
+
+			self.label_TituloCategoria.grid(row=0,column=0,sticky='w',padx=(5,2),pady=2)
+			self.entry_TituloCategoria.grid(row=0,column=1,padx=2,pady=2)
+			self.label_PastaPai.grid(row=0,column=2,sticky='w',padx=2,pady=2)	 
+			self.optionmenu_PastaPai.grid(row=0,column=3,padx=2,pady=2)
+			self.label_Aviso.grid(row=1,column=0,columnspan=3,padx=(5,2),sticky="NSEW",pady=2)
+			self.label_PalavraChave.grid(row=2,column=0,padx=(5,2),pady=2,sticky='w')
+			self.entry_PalavraChave_1.grid(row=2,column=1,padx=2,pady=2)
+			self.entry_PalavraChave_2.grid(row=2,column=2,padx=2,pady=2)
+			self.entry_PalavraChave_3.grid(row=2,column=3,padx=2,pady=2)
+			self.Button_confirm.grid(row=3,column=3,padx=2,pady=5)
+
+		def Pasta_Adicionar(self):
+			if self.entry_PalavraChave_1.get() != '' and self.entry_PalavraChave_2.get() != '' and self.entry_PalavraChave_3.get() != '':
+				self.master.adicionar_subcategoria(self.optionmenu_Value.get(),self.entry_TituloCategoria.get(),self.entry_PalavraChave_1.get(),self.entry_PalavraChave_2.get(),self.entry_PalavraChave_3.get())
+				self.destroy()
+			else:
+				messagebox.showerror('Alerta','Coloque as tres palavras chaves')
+			
+			#apenas adicionar pasta -old categoria- logo uma entry e um botao de voltar e outro de adicionar
 
 class MenuPrincipal(customtkinter.CTkFrame):
 	def __init__(self, master, abrir_cadastro_callback, abrir_historico_callback, abrir_estruturacao_callback):
@@ -298,8 +448,10 @@ class MenuPrincipal(customtkinter.CTkFrame):
 
 		self.create_widgets()
 
-	def create_widgets(self):
 	
+
+	def create_widgets(self):
+
 		self.leftFrameMenu = customtkinter.CTkFrame(self, corner_radius=0)
 		self.rightFrameMenu = customtkinter.CTkFrame(self)
 		
@@ -343,9 +495,9 @@ class MenuPrincipal(customtkinter.CTkFrame):
 				
 			self.listbox.insert(END,f"{arq} Retornado a para {dados[0]}/{arq}")
 			if strftime("%m/%Y") in self.Historico.keys():
-				self.Historico[strftime("%m/%Y")].append(f"Dia {strftime("%d")} {arq} Retornado a para {dados[0]}/{arq}")
+				self.Historico[strftime("%m/%Y")].append(f"Dia {strftime("%d")} {arq} Retornado para {dados[0]}/{arq}")
 			else:
-				self.Historico[strftime("%m/%Y")] = [f"Dia {strftime("%d")} {arq} Retornado a para {dados[0]}/{arq}"]
+				self.Historico[strftime("%m/%Y")] = [f"Dia {strftime("%d")} {arq} Retornado para {dados[0]}/{arq}"]
 
 			self.master.update()
 			self.master.update_idletasks()
@@ -357,6 +509,55 @@ class MenuPrincipal(customtkinter.CTkFrame):
 			json.dump(self.Historico, arq)
 			arq.close()
 
+	def listarPdfs(self):
+		estrutura_tmp = {}
+		for item_1 in self.estrutura.keys():
+			if type(self.estrutura[item_1]) == list:
+				estrutura_tmp[item_1] = self.estrutura[item_1]
+			else:
+				for item_2 in self.estrutura[item_1].keys():
+					if type(self.estrutura[item_1][item_2]) == list:
+						estrutura_tmp[item_2] = self.estrutura[item_1][item_2]
+					else:
+						for item_3 in self.estrutura[item_1][item_2].keys():
+							if type(self.estrutura[item_1][item_2][item_3]) == list:
+								estrutura_tmp[item_3] = self.estrutura[item_1][item_2][item_3]
+		return estrutura_tmp
+	
+	def getDirPdf(self,dirTypeDoc):
+		dirPdf = None
+		if dirTypeDoc in self.estrutura.keys():
+				dirPdf = None
+		else:
+			for pasta in self.estrutura.keys():
+				if type(self.estrutura[pasta]) == list:
+					continue
+				elif dirTypeDoc in self.estrutura[pasta].keys():
+					dirPdf = pasta
+					break
+				for subpasta in self.estrutura[pasta]:
+					if type(self.estrutura[pasta][subpasta]) == dict:
+						if dirTypeDoc in self.estrutura[pasta][subpasta].keys():
+							dirPdf = f"{pasta}/{subpasta}"
+						break
+		return dirPdf
+
+	def VerificarDuplicidade(self,caminho_destino,arq,diretorio,caminho_origem):
+		#VERIFICA SE N JA EXISTE ALGUM ARQUIVO IGUAL
+		if os.path.exists(f"{caminho_destino}/{arq}"):
+			numero = 1
+			novo_nome = f"{numero}-{arq}"
+			
+			# Gera um nome disponível sem renomear ainda
+			while os.path.exists(f"{caminho_destino}/{arq}"):
+				numero += 1
+				novo_nome = f"{numero}-{arq}"
+
+			novo_caminho = f"{diretorio}/{novo_nome}"
+			os.rename(caminho_origem, novo_caminho)
+			return [novo_nome,novo_caminho]
+		
+		return [arq,caminho_origem]
 
 	def organizar(self):
 		self.Diretorio = askdirectory()
@@ -398,8 +599,9 @@ class MenuPrincipal(customtkinter.CTkFrame):
 					try:
 						with open(tmpDiretorio, "rb") as pdf_file:
 							pdf_reader = PyPDF2.PdfReader(pdf_file)
-							infodate = pdf_reader.metadata['/CreationDate'].split(":")[1]
-							infodate = f"{infodate[6:8]}-{infodate[4:6]}-{infodate[0:4]}"
+							infoday = pdf_reader.metadata['/CreationDate'].split(":")[1]
+							infoday,infoano = f'{infoday[4:6]}',f'{infoday[0:4]}'
+
 
 							texto = pdf_reader.pages[0].extract_text()
 							pdf_file.close()
@@ -421,18 +623,16 @@ class MenuPrincipal(customtkinter.CTkFrame):
 							print(f"Cliente identificado: {nome}")
 							break
 
-					# CRIANDO UM SEGUNDO DICIONARIO PARA RODAR OS DADOS
-					self.new_estrutura = {}
-					for subdict in self.estrutura.values(): 
-						for chave, valor in subdict.items(): 
-							self.new_estrutura[chave] = valor
+					# CRIANDO UM SEGUNDO DICIONARIO PARA RODAR OS DADOS SOMENTE COM OS PDF'S
+					self.new_estrutura = self.listarPdfs()
 
-					tipo_documento_identificado = ''
+
 					for tipo, keywords in self.new_estrutura.items():
 						if any(keyword.lower() in texto.lower() for keyword in keywords):
 							tipo_documento_identificado = tipo
 							print(f"Tipo de documento identificado: {tipo}")
 							break
+					
 					
 					# Exibir o resultado da análise
 					if cliente_identificado != '' and tipo_documento_identificado != '':
@@ -485,22 +685,27 @@ class MenuPrincipal(customtkinter.CTkFrame):
 
 					dirTypeDoc = self.PdfProcessados[arq]["Doc Type"]
 					dirClient = self.PdfProcessados[arq]["Cliente"]
-					tmpdirreferente = "".join(x for x in self.estrutura.keys() if self.PdfProcessados[arq]["Doc Type"] in self.estrutura[x])
 
-					if os.path.exists(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}/{arq}"):
-						os.rename(self.Diretorio + "/" + arq,f"{self.Diretorio}/1{arq}")
-						arq = f"1{arq}"
-						while os.path.exists(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}/{arq}"):
-							arqtmpold = arq
-							arq = f"{(int(arq[0])+1)}"
-							os.rename(self.Diretorio + "/" + arqtmpold,f"{self.Diretorio}/{arq}")
+					#IDENTIFICIANDO LOCAL DO ARQUIVO NA ESTRUTURA
+					tmpdirreferente = self.getDirPdf(dirTypeDoc)
 
-
-					if os.path.exists(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}"):
-						os.rename(self.Diretorio + "/" + arq,f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}/{arq}")
+					##--------------------------------------------------------------------------------
+					if tmpdirreferente == None:
+						caminho_destino = f"{self.Diretorio_Principal}/{dirClient}/{dirTypeDoc}/{infoano}/{infoday}"
 					else:
-						os.makedirs(f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}")
-						os.rename(self.Diretorio + "/" + arq,f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}/{arq}")
+						caminho_destino = f"{self.Diretorio_Principal}/{dirClient}/{tmpdirreferente}/{dirTypeDoc}/{infoano}/{infoday}"
+					caminho_origem = f"{self.Diretorio}/{arq}"
+
+					arq,caminho_origem = self.VerificarDuplicidade(caminho_destino,arq,self.Diretorio,caminho_origem)
+
+
+					#-------------------TROCA DE LOCAL DE ARQUIVOS-----------------------
+					if os.path.exists(f"{caminho_destino}"):
+						os.rename(self.Diretorio + "/" + arq,f"{caminho_destino}/{arq}")
+					else:
+						os.makedirs(f"{caminho_destino}")
+						os.rename(self.Diretorio + "/" + arq,f"{caminho_destino}/{arq}")
+					#-------------------TROCA DE LOCAL DE ARQUIVOS-----------------------
 						
 					self.listbox.insert(END,f"{arq} Transferido para {self.Diretorio_Principal + "/" + arq}")
 
@@ -508,11 +713,13 @@ class MenuPrincipal(customtkinter.CTkFrame):
 						self.Historico[strftime("%m/%Y")].append(f"Dia {strftime("%d")} {arq} Transferido para {self.Diretorio_Principal + "/" + arq}")
 					else:
 						self.Historico[strftime("%m/%Y")] = [f"Dia {strftime("%d")} {arq} Transferido para {self.Diretorio_Principal + "/" + arq}"]
+				##--------------------------------------------------------------------------------
+
+
 					#salvando dados para "desfazer"
-					self.dados_tmp[arq] = [f"{self.Diretorio}",f"{self.Diretorio_Principal}/{tmpdirreferente}/{dirTypeDoc}/{dirClient}/{infodate}/{arq}"]
+					self.dados_tmp[arq] = [f"{self.Diretorio}",f"{caminho_destino}/{arq}"]
 					self.master.update()
 					self.master.update_idletasks()
-				
 				self.Bt_desfazer.configure(state='normal')
 				self.Bt_desfazer.grid(row=4, padx=10, pady=10)
 				self.salvar_dados_historico()
@@ -722,6 +929,15 @@ class App:
 		self.janela.title("Organizador de Diretórios")
 		self.janela.resizable(False, False)
 
+		'''#Criando barra de menu
+		self.menuBar = Menu(self.janela)
+		self.toolsMenuBar = Menu(self.menuBar,tearoff=False,)
+		self.menuBar.add_cascade(label="Importar",menu=self.toolsMenuBar)
+		self.toolsMenuBar.add_command(label="Auto Reconhecer Pdf",command=self.Ferramenta_AutoReconhecerPdf)
+		self.toolsMenuBar.add_command(label="Estrutura",command=self.Ferramenta_Estrutura)
+		self.janela.config(menu=self.menuBar)'''
+
+
 		self.frame_menu_principal = MenuPrincipal(self.janela, self.abrir_cadastro, self.abrir_historico,self.abrir_estruturacao)
 		self.frame_cadastro = Cadastro(self.janela, self.voltar_menu)
 		self.frame_historico = Historico(self.janela, self.voltar_menu)
@@ -729,17 +945,134 @@ class App:
 
 		self.frame_menu_principal.pack()
 
+	def Ferramenta_Estrutura(self):
+		messagebox.showinfo("Aviso", "Selecione o diretorio ja existente com a estrutura de arquivos criada.")
+		Diretorio = askdirectory()
+		self.estrutura_final = {}
+		pastas_encontradas = []
+		pdfs_encontrados = []
+
+		if Diretorio != "":
+			self.estrutura_final = self.mapear_pastas_e_pdfs(Diretorio)
+			print(self.estrutura_final)
+
+		else:
+			messagebox.showerror("Error", "Selecione o diretorio ja existente com a estrutura de arquivos criada.")
+
+		
+		if messagebox.askyesno("Alerta", "Sera apagado a estrutura existente, e sera criada uma nova") != True:
+			return
+
+		#Retirando Dado de diretorio matriz da estrutura
+		if os.path.isfile('estrutura.json'):
+			with open('estrutura.json', 'r') as file:
+				self.categorias,self.Diretorio_Principal = json.load(file)
+		else:
+			self.Diretorio_Principal = ''
+
+		"""Salva as categorias e subcategorias em um arquivo JSON."""
+		with open('estrutura.json', 'w') as file:
+			json.dump([self.categorias,self.Diretorio_Principal], file, indent=4)
+		
+	def mapear_pastas_e_pdfs(self,diretorio):
+		def explorar_pasta(caminho):
+			estrutura = {}
+			for item in os.listdir(caminho):
+				caminho_completo = os.path.join(caminho, item)
+				if os.path.isdir(caminho_completo):# Se for uma pasta
+					estrutura[item] = explorar_pasta(caminho_completo)# Chamada recursiva
+
+			return estrutura
+		return explorar_pasta(diretorio)
+	
+	def encontrar_pdfs(self,diretorio):
+		pdfs_encontrados = []
+
+		for raiz, _, arquivos in os.walk(diretorio):
+			for arquivo in arquivos:
+				if arquivo.lower().endswith(".pdf"):
+					caminho_completo = os.path.join(raiz, arquivo)
+					pdfs_encontrados.append(caminho_completo)
+
+		return pdfs_encontrados
+	
+	def extrair_texto_pdfs_pypdf(self,lista_pdfs):
+		pdfs_texto = {}
+
+		for pdf in lista_pdfs:
+			try:
+				with open(pdf, "rb") as arquivo_pdf:
+					leitor = PyPDF2.PdfReader(arquivo_pdf)
+					texto_completo = ""
+
+					for pagina in leitor.pages:
+						texto_completo += pagina.extract_text() + " "
+
+					# Quebrar o texto em uma lista de palavras
+					palavras = texto_completo.split()
+
+					# Adicionar ao dicionário
+					pdfs_texto[pdf.split("\\")[-1]] = palavras
+
+			except Exception as e:
+				print(f"Erro ao processar {pdf}: {e}")
+
+		return pdfs_texto
+	
+	def encontrar_palavras_exclusivas(self,dicionario_pdfs):
+		# Passo 1: Criar um dicionário invertido {palavra: [pdfs onde aparece]}
+		palavras_em_pdfs = {}
+
+		for pdf, palavras in dicionario_pdfs.items():
+			for palavra in set(palavras):  # Usamos 'set' para evitar duplicatas
+				if palavra not in palavras_em_pdfs:
+					palavras_em_pdfs[palavra] = []
+				palavras_em_pdfs[palavra].append(pdf)
+
+		# Passo 2: Remover palavras que aparecem em mais de um PDF
+		palavras_exclusivas = {
+			palavra: pdfs[0] for palavra, pdfs in palavras_em_pdfs.items() if len(pdfs) == 1
+		}
+
+		# Passo 3: Construir um novo dicionário com apenas palavras exclusivas
+		dicionario_filtrado = {pdf: [] for pdf in dicionario_pdfs}
+
+		for palavra, pdf in palavras_exclusivas.items():
+			dicionario_filtrado[pdf].append(palavra)
+
+		return dicionario_filtrado
+
+
+	def Ferramenta_AutoReconhecerPdf(self):
+		Diretorio = askdirectory()
+		
+		pdfs = self.encontrar_pdfs(Diretorio)
+
+		dicio_pdfs = self.extrair_texto_pdfs_pypdf(pdfs)
+
+		dicionario_final = self.encontrar_palavras_exclusivas(dicio_pdfs)
+
+		# Exibir resultado
+		for pdf, palavras in dicionario_final.items():
+			print(f"\n📂 {pdf}")
+			print(f"🔑 Palavras-chave: {palavras}")
 
 	def abrir_cadastro(self):
+		self.janela.config(menu="")
+		
 		self.frame_menu_principal.pack_forget()
 		self.frame_cadastro.pack()
 		self.frame_cadastro.ListarClientes()
 		
 	def abrir_historico(self):
+		self.janela.config(menu="")
+		
 		self.frame_menu_principal.pack_forget()
 		self.frame_historico.pack()
 
 	def abrir_estruturacao(self):
+		self.janela.config(menu="")
+		
 		self.frame_menu_principal.pack_forget()
 		self.frame_estrutura.pack()
 		pass
@@ -750,6 +1083,7 @@ class App:
 		self.frame_historico.pack_forget()
 		self.frame_estrutura.pack_forget()
 		self.frame_menu_principal.pack()
+		'''self.janela.config(menu=self.menuBar)'''
 
 if __name__ == "__main__":
 	app = App()
