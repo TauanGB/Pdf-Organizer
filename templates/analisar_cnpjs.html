@@ -1,0 +1,577 @@
+{% extends 'base_cadastro.html' %}
+{% block content %}
+<style>
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+<div class="container-xl py-4">
+    <!-- Botão de navegação no topo -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <button type="button" class="btn btn-outline-primary" onclick="window.history.back()">
+            <i class="bi bi-arrow-left me-2"></i>Voltar
+        </button>
+        <h1 class="mb-0 display-4 text-primary fw-bold">Auto Reconhecer CNPJs</h1>
+        <div style="width: 120px;"></div> <!-- Espaçador para centralizar o título -->
+    </div>
+    
+    <!-- Seção de Upload -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow border-0">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-upload fs-2 text-primary me-3"></i>
+                        <h3 class="card-title mb-0">Enviar PDFs para Análise</h3>
+                    </div>
+                    
+                    <!-- Instruções -->
+                    <div class="alert alert-info mb-4">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Como funciona:</strong> Selecione os arquivos PDF que contêm CNPJs. 
+                        O sistema irá extrair automaticamente todos os CNPJs válidos encontrados nos documentos.
+                    </div>
+                    
+                    <form method="post" enctype="multipart/form-data" id="uploadForm">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-8">
+                                <label for="pdfs" class="form-label">Selecionar PDFs</label>
+                                <input type="file" class="form-control" id="pdfs" name="pdfs" multiple accept=".pdf" required>
+                                <div class="form-text">Selecione um ou mais arquivos PDF para análise</div>
+                                <div id="fileList" class="mt-2"></div>
+                            </div>
+                            <div class="col-4">
+                                <button type="submit" class="btn btn-primary w-100" id="btnAnalisar">
+                                    <i class="bi bi-search"></i> Analisar CNPJs
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Seção de Progresso -->
+                    <div id="progressSection" style="display: none;" class="mt-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="bi bi-arrow-repeat spin"></i> Analisando PDFs...
+                                </h6>
+                                <div class="progress mb-2" style="height: 25px;">
+                                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" style="width: 0%; font-size: 0.9rem;">0%</div>
+                                </div>
+                                <div id="progressLog" class="small text-muted" style="max-height: 100px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção de Resultados -->
+    {% if cnpjs_encontrados %}
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow border-0">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-list-check fs-2 text-success me-3"></i>
+                        <h3 class="card-title mb-0">CNPJs Encontrados</h3>
+                        <span class="badge bg-primary ms-auto">{{ cnpjs_encontrados|length }} encontrados</span>
+                    </div>
+                    
+                    <!-- Estatísticas -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-primary">{{ cnpjs_encontrados|length }}</h5>
+                                    <small class="text-muted">Total de CNPJs</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-success" id="selecionadosCount">{{ cnpjs_encontrados|length }}</h5>
+                                    <small class="text-muted">Selecionados</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-warning" id="arquivosUnicos">0</h5>
+                                    <small class="text-muted">Arquivos únicos</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-info" id="cnpjsUnicos">0</h5>
+                                    <small class="text-muted">CNPJs únicos</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post" id="formSalvarCNPJs">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="cnpjsTable" style="font-size: 0.8rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="50">
+                                            <input type="checkbox" id="selectAll" class="form-check-input">
+                                        </th>
+                                        <th style="font-size: 0.8rem;">CNPJ</th>
+                                        <th style="font-size: 0.8rem;">Nome da Empresa</th>
+                                        <th style="font-size: 0.8rem;">Arquivo Origem</th>
+                                        <th style="font-size: 0.8rem;">Repetições</th>
+                                        <th style="font-size: 0.8rem;">Contexto</th>
+                                        <th style="font-size: 0.8rem;">Rep. Contexto</th>
+                                        <th width="120" style="font-size: 0.8rem;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cnpj in cnpjs_encontrados %}
+                                    <tr data-cnpj="{{ cnpj.cnpj_limpo }}" data-arquivo="{{ cnpj.arquivo }}">
+                                        <td>
+                                            <input type="checkbox" name="cnpjs_selecionados" value="{{ cnpj.cnpj_limpo }}" 
+                                                   class="form-check-input cnpj-checkbox" checked>
+                                        </td>
+                                        <td>
+                                            <code class="text-primary fw-bold" style="white-space: nowrap; font-size: 0.75rem;">{{ cnpj.cnpj }}</code>
+                                        </td>
+                                        <td style="min-width: 200px; max-width: 300px;">
+                                            <input type="text" class="form-control form-control-sm" 
+                                                   name="nome_{{ cnpj.cnpj_limpo }}" 
+                                                   value="{{ cnpj.nome_sugerido }}" 
+                                                   placeholder="Digite o nome da empresa"
+                                                   maxlength="100"
+                                                   style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.75rem; width: 100%;"
+                                                   title="{{ cnpj.nome_sugerido }}">
+                                        </td>
+                                        <td style="min-width: 120px; max-width: 150px;">
+                                            <small class="text-muted" title="{{ cnpj.arquivo }}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-size: 0.7rem;">{{ cnpj.arquivo[:25] }}{% if cnpj.arquivo|length > 25 %}...{% endif %}</small>
+                                        </td>
+                                        <td style="width: 60px; text-align: center;">
+                                            <span class="badge bg-info" style="white-space: nowrap; font-size: 0.7rem;">{{ cnpj.repeticoes }}</span>
+                                        </td>
+                                        <td style="min-width: 150px; max-width: 200px;">
+                                            <small class="text-muted" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-size: 0.7rem;">{{ cnpj.contexto[:40] }}...</small>
+                                        </td>
+                                        <td style="width: 60px; text-align: center;">
+                                            <span class="badge bg-warning" style="white-space: nowrap; font-size: 0.7rem;">{{ cnpj.repeticoes_mesmo_contexto }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <button type="button" class="btn btn-outline-success btn-sm" 
+                                                        data-cnpj="{{ cnpj.cnpj_limpo }}"
+                                                        onclick="buscarCNPJAPI(this)"
+                                                        title="Buscar nome na API"
+                                                        style="font-size: 0.7rem; padding: 0.25rem 0.5rem;">
+                                                    <i class="bi bi-search me-1"></i>API
+                                                </button>
+                                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                                        data-cnpj="{{ cnpj.cnpj }}"
+                                                        data-nome="{{ cnpj.nome_sugerido }}"
+                                                        data-arquivos="{{ cnpj.arquivo }}"
+                                                        data-contextos="{{ cnpj.contexto }}"
+                                                        data-repeticoes="{{ cnpj.repeticoes }}"
+                                                        data-repeticoes-contexto="{{ cnpj.repeticoes_mesmo_contexto }}"
+                                                        onclick="verContexto(this)"
+                                                        title="Ver detalhes completos"
+                                                        style="font-size: 0.7rem; padding: 0.25rem 0.5rem;">
+                                                    <i class="bi bi-eye me-1"></i>Ver
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                        onclick="removerLinha(this)"
+                                                        title="Remover"
+                                                        style="font-size: 0.7rem; padding: 0.25rem 0.5rem;">
+                                                    <i class="bi bi-trash me-1"></i>Remover
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <div>
+                                <span class="text-muted">Selecionados: <span id="contadorSelecionados">{{ cnpjs_encontrados|length }}</span></span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-success" onclick="buscarTodosCNPJsAPI()" id="btnBuscarTodos">
+                                    <i class="bi bi-search"></i> Buscar Todos na API
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" onclick="window.history.back()">
+                                    <i class="bi bi-arrow-left"></i> Voltar
+                                </button>
+                                <button type="button" class="btn btn-outline-warning" onclick="limparSelecao()">
+                                    <i class="bi bi-x-circle"></i> Limpar Seleção
+                                </button>
+                                <button type="submit" class="btn btn-success" name="salvar_cnpjs" id="btnSalvar">
+                                    <i class="bi bi-check-lg"></i> Salvar CNPJs Selecionados
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Modal para mostrar detalhes completos -->
+    <div class="modal fade" id="contextoModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalhes Completos do CNPJ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Informações da Empresa -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-primary"><i class="bi bi-building me-2"></i>Dados da Empresa</h6>
+                            <div id="dadosEmpresa"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-success"><i class="bi bi-graph-up me-2"></i>Estatísticas</h6>
+                            <div id="estatisticas"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Arquivos -->
+                    <div class="mb-4">
+                        <h6 class="text-info"><i class="bi bi-file-pdf me-2"></i>Arquivos Encontrados</h6>
+                        <div id="arquivosLista" class="border rounded p-3 bg-light"></div>
+                    </div>
+                    
+                    <!-- Contextos -->
+                    <div class="mb-4">
+                        <h6 class="text-warning"><i class="bi bi-text-paragraph me-2"></i>Contextos Encontrados</h6>
+                        <div id="contextosLista" class="border rounded p-3 bg-light"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmação -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Ação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmAction">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Controle do checkbox "Selecionar Todos"
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.cnpj-checkbox');
+    
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            atualizarContadores();
+        });
+    }
+    
+    // Atualizar contadores quando checkboxes mudarem
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', atualizarContadores);
+    });
+    
+    // Mostrar loading durante análise
+    const uploadForm = document.getElementById('uploadForm');
+    const btnAnalisar = document.getElementById('btnAnalisar');
+    
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function() {
+            btnAnalisar.innerHTML = '<i class="bi bi-hourglass-split"></i> Analisando...';
+            btnAnalisar.disabled = true;
+        });
+    }
+    
+    // Lista de arquivos selecionados
+    const fileInput = document.getElementById('pdfs');
+    const fileList = document.getElementById('fileList');
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            fileList.innerHTML = '';
+            if (this.files.length > 0) {
+                const ul = document.createElement('ul');
+                ul.className = 'list-group list-group-flush';
+                
+                for (let file of this.files) {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.innerHTML = `
+                        <span><i class="bi bi-file-pdf text-danger me-2"></i>${file.name}</span>
+                        <small class="text-muted">${(file.size / 1024 / 1024).toFixed(2)} MB</small>
+                    `;
+                    ul.appendChild(li);
+                }
+                fileList.appendChild(ul);
+            }
+        });
+    }
+    
+    // Inicializar contadores
+    atualizarContadores();
+});
+
+function atualizarContadores() {
+    const selecionados = document.querySelectorAll('.cnpj-checkbox:checked').length;
+    const total = document.querySelectorAll('.cnpj-checkbox').length;
+    
+    document.getElementById('contadorSelecionados').textContent = selecionados;
+    document.getElementById('selecionadosCount').textContent = selecionados;
+    
+    // Contar arquivos únicos
+    const arquivos = new Set();
+    document.querySelectorAll('tr[data-arquivo]').forEach(tr => {
+        arquivos.add(tr.getAttribute('data-arquivo'));
+    });
+    document.getElementById('arquivosUnicos').textContent = arquivos.size;
+    
+    // Contar CNPJs únicos
+    const cnpjs = new Set();
+    document.querySelectorAll('tr[data-cnpj]').forEach(tr => {
+        cnpjs.add(tr.getAttribute('data-cnpj'));
+    });
+    document.getElementById('cnpjsUnicos').textContent = cnpjs.size;
+}
+
+function verContexto(button) {
+    const cnpj = button.getAttribute('data-cnpj');
+    const nome = button.getAttribute('data-nome');
+    const arquivos = button.getAttribute('data-arquivos');
+    const contextos = button.getAttribute('data-contextos');
+    const repeticoes = button.getAttribute('data-repeticoes');
+    const repeticoesContexto = button.getAttribute('data-repeticoes-contexto');
+    
+    // Dados da Empresa
+    const dadosEmpresaHtml = `
+        <div class="mb-2">
+            <strong>CNPJ:</strong> ${cnpj}<br>
+            <strong>Nome:</strong> ${nome}<br>
+            <strong>Dados da Brasil API:</strong> Busca automática realizada
+        </div>
+    `;
+    
+    // Estatísticas
+    const estatisticasHtml = `
+        <div class="mb-2">
+            <strong>Repetições Totais:</strong> <span class="badge bg-info">${repeticoes}</span><br>
+            <strong>Repetições Mesmo Contexto:</strong> <span class="badge bg-warning">${repeticoesContexto}</span><br>
+            <strong>Arquivo:</strong> ${arquivos}<br>
+        </div>
+    `;
+    
+    // Lista de Arquivos
+    const arquivosHtml = `<div class="mb-1"><i class="bi bi-file-pdf text-danger me-2"></i>${arquivos}</div>`;
+    
+    // Lista de Contextos
+    const contextosHtml = `<div class="mb-2 p-2 border-start border-3 border-primary">
+        <strong>Contexto:</strong><br>
+        <small class="text-muted">${contextos}</small>
+    </div>`;
+    
+    // Atualiza o modal
+    document.getElementById('dadosEmpresa').innerHTML = dadosEmpresaHtml;
+    document.getElementById('estatisticas').innerHTML = estatisticasHtml;
+    document.getElementById('arquivosLista').innerHTML = arquivosHtml;
+    document.getElementById('contextosLista').innerHTML = contextosHtml;
+    
+    new bootstrap.Modal(document.getElementById('contextoModal')).show();
+}
+
+function removerLinha(button) {
+    const row = button.closest('tr');
+    const cnpj = row.querySelector('code').textContent;
+    
+    document.getElementById('confirmMessage').textContent = `Deseja remover o CNPJ ${cnpj} da lista?`;
+    
+    const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    confirmModal.show();
+    
+    document.getElementById('confirmAction').onclick = function() {
+        row.remove();
+        atualizarContadores();
+        confirmModal.hide();
+    };
+}
+
+function limparSelecao() {
+    document.getElementById('confirmMessage').textContent = 'Deseja desmarcar todos os CNPJs?';
+    
+    const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    confirmModal.show();
+    
+    document.getElementById('confirmAction').onclick = function() {
+        document.querySelectorAll('.cnpj-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        document.getElementById('selectAll').checked = false;
+        atualizarContadores();
+        confirmModal.hide();
+    };
+}
+
+// Validação antes de salvar
+document.getElementById('formSalvarCNPJs').addEventListener('submit', function(e) {
+    const selecionados = document.querySelectorAll('.cnpj-checkbox:checked');
+    const semNome = [];
+    
+    selecionados.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        const nomeInput = row.querySelector('input[type="text"]');
+        if (!nomeInput.value.trim()) {
+            semNome.push(row.querySelector('code').textContent);
+        }
+    });
+    
+    if (semNome.length > 0) {
+        e.preventDefault();
+        alert(`Os seguintes CNPJs não possuem nome:\n${semNome.join('\n')}\n\nPor favor, preencha os nomes antes de salvar.`);
+    }
+});
+
+// Função para buscar CNPJ individual na API
+async function buscarCNPJAPI(button) {
+    const cnpj = button.getAttribute('data-cnpj');
+    const row = button.closest('tr');
+    const nomeInput = row.querySelector('input[type="text"]');
+    
+    // Desabilitar botão e mostrar loading
+    button.disabled = true;
+    button.innerHTML = '<i class="bi bi-arrow-repeat spin"></i>';
+    
+    try {
+        const response = await fetch('/buscar_cnpj_api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ cnpj: cnpj })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            nomeInput.value = data.nome;
+            nomeInput.classList.add('border-success');
+            setTimeout(() => nomeInput.classList.remove('border-success'), 2000);
+        } else {
+            alert(`Erro ao buscar CNPJ ${cnpj}: ${data.message}`);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert(`Erro ao buscar CNPJ ${cnpj}: ${error.message}`);
+    } finally {
+        // Restaurar botão
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-search me-1"></i>API';
+    }
+}
+
+// Função para buscar todos os CNPJs na API
+async function buscarTodosCNPJsAPI() {
+    const checkboxes = document.querySelectorAll('.cnpj-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('Selecione pelo menos um CNPJ para buscar na API.');
+        return;
+    }
+    
+    const btnBuscarTodos = document.getElementById('btnBuscarTodos');
+    btnBuscarTodos.disabled = true;
+    btnBuscarTodos.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Buscando...';
+    
+    let sucessos = 0;
+    let erros = 0;
+    
+    for (let i = 0; i < checkboxes.length; i++) {
+        const checkbox = checkboxes[i];
+        const row = checkbox.closest('tr');
+        const cnpj = row.getAttribute('data-cnpj');
+        const nomeInput = row.querySelector('input[type="text"]');
+        
+        // Atualizar progresso
+        const progresso = Math.round(((i + 1) / checkboxes.length) * 100);
+        document.getElementById('progressBar').style.width = progresso + '%';
+        document.getElementById('progressBar').textContent = progresso + '%';
+        
+        try {
+            const response = await fetch('/buscar_cnpj_api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cnpj: cnpj })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                nomeInput.value = data.nome;
+                nomeInput.classList.add('border-success');
+                sucessos++;
+            } else {
+                erros++;
+            }
+            
+            // Pequena pausa para não sobrecarregar a API
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+        } catch (error) {
+            console.error('Erro:', error);
+            erros++;
+        }
+    }
+    
+    // Restaurar botão
+    btnBuscarTodos.disabled = false;
+    btnBuscarTodos.innerHTML = '<i class="bi bi-search"></i> Buscar Todos na API';
+    
+    // Mostrar resultado
+    alert(`Busca concluída!\n\nSucessos: ${sucessos}\nErros: ${erros}`);
+    
+    // Remover classes de sucesso após 2 segundos
+    setTimeout(() => {
+        document.querySelectorAll('.border-success').forEach(input => {
+            input.classList.remove('border-success');
+        });
+    }, 2000);
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,342 @@
+{% extends 'base_cadastro.html' %}
+{% block content %}
+<div class="container-xl py-4">
+    <!-- Mensagens Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <button type="button" class="btn btn-outline-primary" onclick="window.history.back()">
+            <i class="bi bi-arrow-left me-2"></i>Voltar
+        </button>
+        <h1 class="display-4 text-primary fw-bold">Auto Reconhecer Estrutura</h1>
+        <div style="width: 120px;"></div> <!-- Espaçador para centralizar o título -->
+    </div>
+
+    <div class="row">
+        <!-- Card de Seleção de Diretório -->
+        <div class="col-lg-4">
+            <div class="card shadow border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-folder2-open fs-2 text-primary me-3"></i>
+                        <h3 class="card-title mb-0">Selecionar Diretório</h3>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="diretorio" class="form-label">Diretório Selecionado</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="diretorio" name="diretorio" 
+                                   placeholder="Nenhum diretório selecionado" readonly>
+                            <button type="button" class="btn btn-outline-primary" id="btnSelecionarDiretorio">
+                                <i class="bi bi-folder2-open me-2"></i>Selecionar
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnLimparDiretorio" style="display: none;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Clique no botão para selecionar um diretório usando o sistema de arquivos</div>
+                        
+                        <!-- Informações do diretório selecionado -->
+                        <div id="diretorioInfo" class="mt-3" style="display: none;">
+                            <div class="alert alert-info">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <div>
+                                        <strong>Diretório selecionado:</strong> <span id="nomeDiretorio"></span><br>
+                                        <small class="text-muted">Caminho: <span id="caminhoDiretorio"></span></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post" id="formAnalisar">
+                        <input type="hidden" id="diretorio_hidden" name="diretorio" required>
+                        <button type="submit" class="btn btn-primary w-100" id="btnAnalisar" disabled>
+                            <i class="bi bi-search me-2"></i>Analisar Estrutura
+                        </button>
+                    </form>
+                    
+                    {% if diretorio_analisado %}
+                    <div class="mt-4">
+                        <h6 class="text-success">
+                            <i class="bi bi-check-circle me-2"></i>Diretório Analisado
+                        </h6>
+                        <small class="text-muted">{{ diretorio_analisado }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de Resultados -->
+        <div class="col-lg-8">
+            <div class="card shadow border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-diagram-3 fs-2 text-success me-3"></i>
+                        <h3 class="card-title mb-0">Estrutura Encontrada</h3>
+                    </div>
+                    
+                    {% if estrutura_encontrada %}
+                        <!-- Estatísticas -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-folder fs-1"></i>
+                                        <h4>{{ estrutura_encontrada.total_pastas }}</h4>
+                                        <p class="mb-0">Pastas Encontradas</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-gear fs-1"></i>
+                                        <h4>Próximo</h4>
+                                        <p class="mb-0">Configurar Palavras-Chave</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Árvore de Estrutura -->
+                        <div class="overflow-auto" style="max-height: 500px;">
+                            <h6 class="mb-3">Estrutura Hierárquica:</h6>
+                            {% macro render_estrutura(item, nivel=0) %}
+                                <div class="ms-{{ nivel * 3 }}">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-folder-fill text-warning me-2"></i>
+                                        <strong class="text-warning">{{ item.nome }}</strong>
+                                        <span class="badge bg-warning text-dark ms-2">Pasta</span>
+                                    </div>
+                                    
+                                    {% if item.filhos %}
+                                        {% for filho in item.filhos %}
+                                            {{ render_estrutura(filho, nivel + 1) }}
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            {% endmacro %}
+
+                            {% for item in estrutura_encontrada.estrutura %}
+                                {{ render_estrutura(item) }}
+                            {% endfor %}
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="mt-4 d-flex gap-2">
+                            <button class="btn btn-success" onclick="proximoPasso()">
+                                <i class="bi bi-arrow-right me-2"></i>Próximo Passo
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="limparEstrutura()">
+                                <i class="bi bi-arrow-clockwise me-2"></i>Nova Análise
+                            </button>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-folder2 fs-1 mb-3"></i>
+                            <h5>Nenhuma estrutura analisada</h5>
+                            <p>Selecione um diretório para começar a análise</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Verificar se a File System Access API está disponível
+function isFileSystemAccessSupported() {
+    return 'showDirectoryPicker' in window;
+}
+
+// Função para selecionar diretório usando File System Access API
+async function selecionarDiretorio() {
+    try {
+        // Verificar se a API está disponível
+        if (!isFileSystemAccessSupported()) {
+            alert('File System Access API não é suportada neste navegador. Use Chrome, Edge ou outro navegador moderno.');
+            return;
+        }
+
+        // Mostrar o seletor de diretório
+        const dirHandle = await window.showDirectoryPicker({
+            mode: 'read'
+        });
+
+        // Atualizar o campo de texto com o nome do diretório
+        const diretorioInput = document.getElementById('diretorio');
+        const diretorioHidden = document.getElementById('diretorio_hidden');
+        const btnAnalisar = document.getElementById('btnAnalisar');
+        
+        // Armazenar informações do diretório
+        const diretorioInfo = {
+            name: dirHandle.name,
+            // Tentar obter o caminho relativo ou absoluto se possível
+            path: await getDirectoryPath(dirHandle)
+        };
+        
+        diretorioInput.value = diretorioInfo.name;
+        diretorioHidden.value = diretorioInfo.path || diretorioInfo.name;
+        
+        // Habilitar o botão de análise
+        btnAnalisar.disabled = false;
+        
+        // Mostrar feedback visual
+        diretorioInput.classList.add('is-valid');
+        
+        // Mostrar informações do diretório
+        const diretorioInfoDiv = document.getElementById('diretorioInfo');
+        const nomeDiretorio = document.getElementById('nomeDiretorio');
+        const caminhoDiretorio = document.getElementById('caminhoDiretorio');
+        const btnLimparDiretorio = document.getElementById('btnLimparDiretorio');
+        
+        nomeDiretorio.textContent = diretorioInfo.name;
+        caminhoDiretorio.textContent = diretorioInfo.path || 'Caminho não disponível';
+        diretorioInfoDiv.style.display = 'block';
+        btnLimparDiretorio.style.display = 'block';
+        
+        console.log('Diretório selecionado:', diretorioInfo);
+        
+    } catch (error) {
+        console.error('Erro ao selecionar diretório:', error);
+        
+        if (error.name === 'AbortError') {
+            // Usuário cancelou a seleção
+            console.log('Seleção de diretório cancelada pelo usuário');
+        } else {
+            alert('Erro ao selecionar diretório: ' + error.message);
+        }
+    }
+}
+
+// Função para tentar obter o caminho do diretório
+async function getDirectoryPath(dirHandle) {
+    try {
+        // Tentar obter o caminho usando a API de permissões
+        if ('queryPermission' in dirHandle) {
+            const permission = await dirHandle.queryPermission({ mode: 'read' });
+            if (permission === 'granted') {
+                // Para navegadores que suportam, tentar obter o caminho
+                if ('getDirectoryHandle' in window) {
+                    // Tentar construir o caminho navegando para cima
+                    const pathParts = [];
+                    let currentHandle = dirHandle;
+                    
+                    while (currentHandle && currentHandle.name) {
+                        pathParts.unshift(currentHandle.name);
+                        try {
+                            currentHandle = await currentHandle.getParent();
+                        } catch (e) {
+                            break;
+                        }
+                    }
+                    
+                    if (pathParts.length > 0) {
+                        return pathParts.join('/');
+                    }
+                }
+            }
+        }
+        
+        // Se não conseguir obter o caminho, retorna apenas o nome
+        return dirHandle.name;
+    } catch (error) {
+        console.warn('Não foi possível obter o caminho completo do diretório:', error);
+        return dirHandle.name;
+    }
+}
+
+function proximoPasso() {
+    // Verificar se há estrutura disponível
+    {% if estrutura_encontrada %}
+        try {
+            // Preparar dados da estrutura para enviar para a próxima página
+            const estruturaData = {{ estrutura_encontrada.estrutura | tojson }};
+            const diretorioRaiz = '{{ estrutura_encontrada.raiz }}';
+            
+            console.log('Estrutura data:', estruturaData); // Debug
+            console.log('Diretório raiz:', diretorioRaiz); // Debug
+            
+            // Usar sessionStorage para passar dados entre páginas
+            sessionStorage.setItem('estrutura_data', JSON.stringify(estruturaData));
+            sessionStorage.setItem('diretorio_raiz', diretorioRaiz);
+            
+            // Redirecionar para a página de configuração de palavras-chave
+            window.location.href = '/configurar_palavras_chave';
+        } catch (error) {
+            console.error('Erro ao preparar dados:', error);
+            alert('Erro ao preparar dados da estrutura: ' + error.message);
+        }
+    {% else %}
+        alert('Nenhuma estrutura disponível para configurar. Primeiro analise um diretório.');
+    {% endif %}
+}
+
+function limparEstrutura() {
+    // Recarrega a página para nova análise
+    window.location.reload();
+}
+
+// Função para limpar a seleção de diretório
+function limparDiretorio() {
+    const diretorioInput = document.getElementById('diretorio');
+    const diretorioHidden = document.getElementById('diretorio_hidden');
+    const btnAnalisar = document.getElementById('btnAnalisar');
+    const btnLimparDiretorio = document.getElementById('btnLimparDiretorio');
+    const diretorioInfoDiv = document.getElementById('diretorioInfo');
+    
+    // Limpar campos
+    diretorioInput.value = '';
+    diretorioHidden.value = '';
+    
+    // Desabilitar botão de análise
+    btnAnalisar.disabled = true;
+    
+    // Esconder botão de limpar e informações
+    btnLimparDiretorio.style.display = 'none';
+    diretorioInfoDiv.style.display = 'none';
+    
+    // Remover feedback visual
+    diretorioInput.classList.remove('is-valid');
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const btnSelecionarDiretorio = document.getElementById('btnSelecionarDiretorio');
+    const btnLimparDiretorio = document.getElementById('btnLimparDiretorio');
+    const diretorioInput = document.getElementById('diretorio');
+    
+    // Adicionar evento de clique ao botão de seleção
+    btnSelecionarDiretorio.addEventListener('click', selecionarDiretorio);
+    
+    // Adicionar evento de clique ao botão de limpar
+    btnLimparDiretorio.addEventListener('click', limparDiretorio);
+    
+    // Verificar se a API está disponível e mostrar aviso se necessário
+    if (!isFileSystemAccessSupported()) {
+        btnSelecionarDiretorio.disabled = true;
+        btnSelecionarDiretorio.title = 'File System Access API não suportada';
+        diretorioInput.placeholder = 'Use um navegador moderno (Chrome, Edge)';
+        
+        // Adicionar aviso visual
+        const aviso = document.createElement('div');
+        aviso.className = 'alert alert-warning mt-3';
+        aviso.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>File System Access API não é suportada neste navegador. Use Chrome, Edge ou outro navegador moderno.';
+        diretorioInput.parentElement.parentElement.appendChild(aviso);
+    }
+});
+</script>
+{% endblock %} 

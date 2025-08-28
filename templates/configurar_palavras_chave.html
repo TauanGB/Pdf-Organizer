@@ -1,0 +1,828 @@
+{% extends 'base_cadastro.html' %}
+{% block content %}
+<div class="container-xl py-4">
+    <!-- Mensagens Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <button type="button" class="btn btn-outline-primary" onclick="window.history.back()">
+            <i class="bi bi-arrow-left me-2"></i>Voltar
+        </button>
+        <h1 class="display-4 text-primary fw-bold">Configurar Estrutura</h1>
+        <div style="width: 120px;"></div> <!-- Espaçador para centralizar o título -->
+    </div>
+
+    <!-- Informações do diretório -->
+    <div class="alert alert-info mb-4">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Diretório:</strong> <span id="diretorioInfo">Carregando...</span>
+    </div>
+
+    <div class="row">
+        <!-- Seção 1: Configuração de Tipos de PDF -->
+        <div class="col-lg-6">
+            <div class="card shadow border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-folder2-open fs-2 text-primary me-3"></i>
+                        <h3 class="card-title mb-0">Configurar Tipos de PDF</h3>
+                    </div>
+                    
+                    <form method="post" id="formEstrutura">
+                        <input type="hidden" name="estrutura_data" id="estruturaDataHidden" value="">
+                        <input type="hidden" name="diretorio_raiz" id="diretorioRaizHidden" value="">
+                        
+                        <!-- Instruções -->
+                        <div class="alert alert-warning mb-4">
+                            <i class="bi bi-lightbulb me-2"></i>
+                            <strong>Como funciona:</strong> Clique em uma pasta para configurar seus tipos de PDF. 
+                            Cada tipo terá suas próprias palavras-chave para identificar PDFs que devem ser organizados nessa pasta.
+                        </div>
+                        
+                        <!-- Lista de Pastas Interativa -->
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3">
+                                <i class="bi bi-diagram-3 me-2"></i>Selecionar Pasta para Configurar:
+                            </h6>
+                            
+                            <!-- Opção para Pasta Raiz -->
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center p-3 border rounded bg-primary bg-opacity-10 pasta-selector-raiz" 
+                                     style="cursor: pointer; transition: background-color 0.2s;"
+                                     onmouseover="this.style.backgroundColor='#e3f2fd'" 
+                                     onmouseout="this.style.backgroundColor='#f8f9fa'"
+                                     onclick="selecionarPastaRaiz()">
+                                    <i class="bi bi-house-fill text-primary me-2"></i>
+                                    <span class="fw-bold text-primary">Pasta Raiz (Empresa)</span>
+                                    <span class="badge bg-primary ms-2">Raiz</span>
+                                    <div class="ms-auto tipos-preview" id="preview_raiz">
+                                        <!-- Preview dos tipos será mostrado aqui -->
+                                    </div>
+                                </div>
+                                
+                                <!-- Container para tipos de PDF da pasta raiz -->
+                                <div id="tipos_raiz" style="margin-left: 20px; display: none;">
+                                    <!-- Tipos de PDF serão adicionados aqui dinamicamente -->
+                                </div>
+                            </div>
+                            
+                            <div class="border rounded p-3 bg-light" style="max-height: 300px; overflow-y: auto;" id="estruturaContainer">
+                                <!-- Estrutura será carregada dinamicamente -->
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-arrow-clockwise fs-1 mb-3"></i>
+                                    <h6>Carregando estrutura...</h6>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Área de configuração da pasta selecionada -->
+                        <div id="configuracaoPasta" class="mb-4" style="display: none;">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-folder-fill me-2"></i>
+                                        Configurando: <span id="nomePastaSelecionada"></span>
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Tipos de PDF existentes -->
+                                    <div id="tiposPDFContainer" class="mb-3">
+                                        <!-- Tipos serão adicionados aqui dinamicamente -->
+                                    </div>
+                                    
+                                    <!-- Botão para adicionar novo tipo -->
+                                    <div class="mb-3">
+                                        <button type="button" class="btn btn-outline-primary" onclick="adicionarTipoPDF()">
+                                            <i class="bi bi-plus-circle me-1"></i>Adicionar Tipo de PDF
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Campos ocultos para armazenar dados -->
+                                    <input type="hidden" id="pastaIdHidden" name="pasta_id" value="">
+                                    <input type="hidden" id="pastaNomeHidden" name="pasta_nome" value="">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Resumo da configuração -->
+                        <div id="resumoConfiguracao" class="mb-4">
+                            <h6 class="text-success mb-3">
+                                <i class="bi bi-check-circle me-2"></i>Resumo da Configuração:
+                            </h6>
+                            <div id="listaResumo" class="list-group">
+                                <!-- Resumo será mostrado aqui -->
+                            </div>
+                        </div>
+                        
+                        <!-- Botões de ação -->
+                        <div class="mt-4 d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-lg me-2"></i>Salvar Estrutura
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="limparEstrutura()">
+                                <i class="bi bi-arrow-clockwise me-2"></i>Limpar Estrutura
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção 2: Abrir PDF para Visualização -->
+        <div class="col-lg-6">
+            <div class="card shadow border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-file-earmark-pdf fs-2 text-danger me-3"></i>
+                        <h3 class="card-title mb-0">Abrir PDF para Visualização</h3>
+                    </div>
+                    
+                    <!-- Instruções -->
+                    <div class="alert alert-info mb-4">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Dica:</strong> Abra PDFs para se inspirar nas palavras-chave que você deve usar.
+                    </div>
+                    
+                    <!-- Botão para abrir PDF do sistema -->
+                    <div class="mb-4">
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="abrirPDFSistema()">
+                            <i class="bi bi-folder2-open me-2"></i>Abrir PDF do Sistema
+                        </button>
+                        <div class="form-text text-center mt-2">
+                            <small>Clique no botão acima para selecionar um PDF para visualizar</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Visualizador de PDF -->
+                    <div id="visualizadorPDF" class="border rounded" style="height: 600px; display: none;">
+                        <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                            <h6 class="mb-0" id="nomePDFAtual">PDF Selecionado</h6>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="fecharVisualizador()">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div class="p-2">
+                            <iframe id="pdfViewer" width="100%" height="550" frameborder="0"></iframe>
+                        </div>
+                    </div>
+                    
+                    <!-- Mensagem quando nenhum PDF está selecionado -->
+                    <div id="mensagemInicial" class="text-center text-muted py-4">
+                        <i class="bi bi-file-earmark-pdf fs-1 mb-3"></i>
+                        <h6>Selecione um PDF</h6>
+                        <p class="small">Use o botão acima para escolher um arquivo PDF para visualizar seu conteúdo e se inspirar nas palavras-chave</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Variáveis globais
+let estruturaData = null;
+let diretorioRaiz = null;
+let tipoCounter = 0;
+let pastasConfiguradas = new Set();
+let tiposConfigurados = new Map(); // Armazena tipos por pasta
+let pastaAtual = null;
+let pastaAtualNome = null;
+
+// Função para carregar dados do sessionStorage
+function carregarDados() {
+    try {
+        const estruturaDataStr = sessionStorage.getItem('estrutura_data');
+        const diretorioRaizStr = sessionStorage.getItem('diretorio_raiz');
+        
+        if (!estruturaDataStr || !diretorioRaizStr) {
+            alert('Dados da estrutura não encontrados. Volte para a página anterior.');
+            window.history.back();
+            return;
+        }
+        
+        estruturaData = JSON.parse(estruturaDataStr);
+        diretorioRaiz = diretorioRaizStr;
+        
+        // Atualizar informações na página
+        document.getElementById('diretorioInfo').textContent = diretorioRaiz;
+        document.getElementById('estruturaDataHidden').value = estruturaDataStr;
+        document.getElementById('diretorioRaizHidden').value = diretorioRaiz;
+        
+        // Renderizar estrutura
+        renderizarEstrutura();
+        
+        console.log('Dados carregados com sucesso:', estruturaData);
+        
+    } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        alert('Erro ao carregar dados da estrutura: ' + error.message);
+        window.history.back();
+    }
+}
+
+// Função para renderizar a estrutura
+function renderizarEstrutura() {
+    const container = document.getElementById('estruturaContainer');
+    container.innerHTML = '';
+    
+    estruturaData.forEach(item => {
+        const itemElement = criarElementoPasta(item, 0);
+        container.appendChild(itemElement);
+    });
+}
+
+// Função para criar elemento de pasta
+function criarElementoPasta(item, nivel) {
+    const div = document.createElement('div');
+    div.className = 'pasta-item mb-2';
+    
+    const pastaId = item.caminho.replace(/[\/\\]/g, '_');
+    div.setAttribute('data-pasta-id', pastaId);
+    div.setAttribute('data-pasta-nome', item.nome);
+    
+    console.log(`Criando elemento para pasta: ${item.nome}, pastaId: ${pastaId}, caminho: ${item.caminho}`);  // Debug
+    
+    const pastaSelector = document.createElement('div');
+    pastaSelector.className = 'd-flex align-items-center p-2 rounded pasta-selector';
+    pastaSelector.style.marginLeft = `${nivel * 20}px`;
+    pastaSelector.style.cursor = 'pointer';
+    pastaSelector.style.transition = 'background-color 0.2s';
+    pastaSelector.onmouseover = () => pastaSelector.style.backgroundColor = '#e3f2fd';
+    pastaSelector.onmouseout = () => pastaSelector.style.backgroundColor = 'transparent';
+    pastaSelector.onclick = () => selecionarPastaInterativa(pastaId, item.nome);
+    
+    pastaSelector.innerHTML = `
+        <i class="bi bi-folder-fill text-warning me-2"></i>
+        <span class="fw-medium">${item.nome}</span>
+        <span class="badge bg-secondary ms-2">Pasta</span>
+        <div class="ms-auto tipos-preview" id="preview_${pastaId}">
+            <!-- Preview dos tipos será mostrado aqui -->
+        </div>
+    `;
+    
+    div.appendChild(pastaSelector);
+    
+    // Container para tipos de PDF desta pasta
+    const tiposContainer = document.createElement('div');
+    tiposContainer.id = `tipos_${pastaId}`;
+    tiposContainer.style.marginLeft = `${(nivel + 1) * 20}px`;
+    tiposContainer.style.display = 'none';
+    div.appendChild(tiposContainer);
+    
+    // Subpastas
+    if (item.filhos && item.filhos.length > 0) {
+        console.log(`Pasta ${item.nome} tem ${item.filhos.length} subpastas`);  // Debug
+        item.filhos.forEach(filho => {
+            const filhoElement = criarElementoPasta(filho, nivel + 1);
+            div.appendChild(filhoElement);
+        });
+    }
+    
+    return div;
+}
+
+// Função para mostrar tipos de PDF de uma pasta
+function mostrarTiposPDF(pastaId) {
+    console.log(`Mostrando tipos de PDF para pastaId: ${pastaId}`);  // Debug
+    
+    // Mostrar container de tipos
+    const tiposContainer = document.getElementById(`tipos_${pastaId}`);
+    if (tiposContainer) {
+        tiposContainer.style.display = 'block';
+        console.log(`Container de tipos para ${pastaId} exibido`);  // Debug
+    } else {
+        console.error(`Container de tipos para ${pastaId} não encontrado`);  // Debug
+    }
+    
+    // Configurar pasta atual para adicionar novos tipos
+    pastaAtual = pastaId;
+    
+    // Adicionar à lista de pastas configuradas
+    if (!pastasConfiguradas.has(pastaId)) {
+        pastasConfiguradas.add(pastaId);
+        atualizarResumoConfiguracao();
+    }
+}
+
+// Função para selecionar uma pasta interativamente
+function selecionarPastaInterativa(pastaId, pastaNome) {
+    console.log(`Selecionando pasta: ${pastaNome}, pastaId: ${pastaId}`);  // Debug
+    
+    // Remover seleção anterior
+    document.querySelectorAll('.pasta-selector').forEach(el => {
+        el.style.backgroundColor = 'transparent';
+        el.style.border = 'none';
+    });
+    document.querySelectorAll('.pasta-selector-raiz').forEach(el => {
+        el.style.backgroundColor = 'transparent';
+        el.style.border = 'none';
+    });
+    
+    // Destacar pasta selecionada
+    const pastaElement = document.querySelector(`[data-pasta-id="${pastaId}"] .pasta-selector`);
+    if (pastaElement) {
+        pastaElement.style.backgroundColor = '#e3f2fd';
+        pastaElement.style.border = '2px solid #2196f3';
+        console.log(`Pasta ${pastaNome} destacada com sucesso`);  // Debug
+    } else {
+        console.error(`Elemento da pasta ${pastaNome} não encontrado`);  // Debug
+    }
+    
+    // Configurar pasta atual
+    pastaAtual = pastaId;
+    pastaAtualNome = pastaNome;
+    
+    // Mostrar tipos de PDF desta pasta
+    mostrarTiposPDF(pastaId);
+    
+    // Configurar área de configuração
+    const configuracaoDiv = document.getElementById('configuracaoPasta');
+    const nomeSpan = document.getElementById('nomePastaSelecionada');
+    const pastaIdHidden = document.getElementById('pastaIdHidden');
+    const pastaNomeHidden = document.getElementById('pastaNomeHidden');
+    
+    if (configuracaoDiv && nomeSpan && pastaIdHidden && pastaNomeHidden) {
+        nomeSpan.textContent = pastaNome;
+        pastaIdHidden.value = pastaId;
+        pastaNomeHidden.value = pastaNome;
+        
+        configuracaoDiv.style.display = 'block';
+        
+        // Limpar tipos existentes
+        const tiposContainer = document.getElementById('tiposPDFContainer');
+        if (tiposContainer) {
+            tiposContainer.innerHTML = '';
+            tipoCounter = 0;
+        }
+        
+        // Adicionar à lista de pastas configuradas
+        if (!pastasConfiguradas.has(pastaId)) {
+            pastasConfiguradas.add(pastaId);
+            atualizarResumoConfiguracao();
+        }
+    } else {
+        console.error('Elementos necessários não encontrados');
+    }
+    
+    console.log(`Pasta atual configurada: ${pastaAtual} (${pastaAtualNome})`);  // Debug
+}
+
+// Função para selecionar a pasta raiz (empresa)
+function selecionarPastaRaiz() {
+    // Remover seleção de pastas individuais
+    document.querySelectorAll('.pasta-selector').forEach(el => {
+        el.style.backgroundColor = 'transparent';
+        el.style.border = 'none';
+    });
+    document.querySelectorAll('.pasta-selector-raiz').forEach(el => {
+        el.style.backgroundColor = 'transparent';
+        el.style.border = 'none';
+    });
+
+    // Destacar a pasta raiz
+    const pastaRaizElement = document.querySelector('.pasta-selector-raiz');
+    if (pastaRaizElement) {
+        pastaRaizElement.style.backgroundColor = '#e3f2fd';
+        pastaRaizElement.style.border = '2px solid #2196f3';
+    }
+
+    // Configurar área de configuração para a pasta raiz
+    const configuracaoDiv = document.getElementById('configuracaoPasta');
+    const nomeSpan = document.getElementById('nomePastaSelecionada');
+    const pastaIdHidden = document.getElementById('pastaIdHidden');
+    const pastaNomeHidden = document.getElementById('pastaNomeHidden');
+
+    if (configuracaoDiv && nomeSpan && pastaIdHidden && pastaNomeHidden) {
+        nomeSpan.textContent = 'Pasta Raiz (Empresa)';
+        pastaIdHidden.value = 'raiz'; // Usar um valor único para a pasta raiz
+        pastaNomeHidden.value = 'raiz';
+
+        configuracaoDiv.style.display = 'block';
+
+        // Limpar tipos existentes para a pasta raiz
+        const tiposContainer = document.getElementById('tiposPDFContainer');
+        if (tiposContainer) {
+            tiposContainer.innerHTML = '';
+        }
+        tipoCounter = 0;
+
+        // Adicionar à lista de pastas configuradas
+        if (!pastasConfiguradas.has('raiz')) {
+            pastasConfiguradas.add('raiz');
+            atualizarResumoConfiguracao();
+        }
+    } else {
+        console.error('Elementos necessários não encontrados');
+    }
+}
+
+// Função para adicionar um novo tipo de PDF
+function adicionarTipoPDF() {
+    if (!pastaAtual) {
+        alert('Selecione uma pasta primeiro!');
+        return;
+    }
+    
+    tipoCounter++;
+    const container = document.getElementById('tiposPDFContainer');
+    
+    const novoTipo = document.createElement('div');
+    novoTipo.className = 'mb-3 p-3 border rounded bg-light';
+    novoTipo.id = `tipo_${pastaAtual}_${tipoCounter}`;
+    
+    novoTipo.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0 text-primary">
+                <i class="bi bi-file-earmark-pdf me-2"></i>Tipo de PDF ${tipoCounter}
+            </h6>
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removerTipoPDF('${pastaAtual}', ${tipoCounter})">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+        
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label">Nome do tipo de PDF:</label>
+                <input type="text" 
+                       class="form-control form-control-sm" 
+                       name="tipo_nome_${pastaAtual}_${tipoCounter}"
+                       id="tipo_nome_${pastaAtual}_${tipoCounter}"
+                       placeholder="Ex: Contratos, Relatórios, Documentos"
+                       required>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Palavras-chave (separadas por vírgulas):</label>
+                <input type="text" 
+                       class="form-control form-control-sm" 
+                       name="tipo_palavras_${pastaAtual}_${tipoCounter}"
+                       id="tipo_palavras_${pastaAtual}_${tipoCounter}"
+                       placeholder="Ex: contrato, documento, relatório"
+                       required>
+                <div class="form-text small">Digite palavras-chave que identificam este tipo de PDF</div>
+            </div>
+        </div>
+        
+        <div class="mt-3">
+            <button type="button" class="btn btn-success btn-sm" onclick="salvarTipoPDF('${pastaAtual}', ${tipoCounter})">
+                <i class="bi bi-check me-1"></i>Salvar Tipo
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(novoTipo);
+}
+
+// Função para salvar um tipo de PDF
+function salvarTipoPDF(pastaId, tipoId) {
+    console.log(`Salvando tipo para pastaId: ${pastaId}, tipoId: ${tipoId}`);  // Debug
+    
+    const nomeInput = document.getElementById(`tipo_nome_${pastaId}_${tipoId}`);
+    const palavrasInput = document.getElementById(`tipo_palavras_${pastaId}_${tipoId}`);
+    
+    const nome = nomeInput.value.trim();
+    const palavras = palavrasInput.value.trim();
+    
+    console.log(`Nome do tipo: ${nome}, Palavras: ${palavras}`);  // Debug
+    
+    if (!nome || !palavras) {
+        alert('Preencha todos os campos!');
+        return;
+    }
+    
+    // Salvar o tipo na memória
+    if (!tiposConfigurados.has(pastaId)) {
+        tiposConfigurados.set(pastaId, []);
+    }
+    
+    const tipoInfo = {
+        id: tipoId,
+        nome: nome,
+        palavras: palavras
+    };
+    
+    tiposConfigurados.get(pastaId).push(tipoInfo);
+    console.log(`Tipos configurados para ${pastaId}:`, tiposConfigurados.get(pastaId));  // Debug
+    
+    // Criar campos hidden no formulário para enviar os dados
+    const form = document.getElementById('formEstrutura');
+    
+    // Campo hidden para o nome do tipo
+    const nomeHidden = document.createElement('input');
+    nomeHidden.type = 'hidden';
+    nomeHidden.name = `tipo_nome_${pastaId}_${tipoId}`;
+    nomeHidden.value = nome;
+    form.appendChild(nomeHidden);
+    
+    // Campo hidden para as palavras-chave
+    const palavrasHidden = document.createElement('input');
+    palavrasHidden.type = 'hidden';
+    palavrasHidden.name = `tipo_palavras_${pastaId}_${tipoId}`;
+    palavrasHidden.value = palavras;
+    form.appendChild(palavrasHidden);
+    
+    console.log(`Campos hidden criados: tipo_nome_${pastaId}_${tipoId} = ${nome}`);
+    console.log(`Campos hidden criados: tipo_palavras_${pastaId}_${tipoId} = ${palavras}`);
+    
+    // Atualizar a estrutura visual
+    atualizarEstruturaVisual();
+    atualizarResumoConfiguracao();
+    
+    // Limpar os campos de input
+    nomeInput.value = '';
+    palavrasInput.value = '';
+    
+    // Mostrar feedback visual
+    const tipoElement = document.getElementById(`tipo_${pastaId}_${tipoId}`);
+    if (tipoElement) {
+        tipoElement.style.backgroundColor = '#d4edda';
+        tipoElement.style.borderColor = '#c3e6cb';
+        
+        // Adicionar indicador de sucesso
+        const successIndicator = document.createElement('div');
+        successIndicator.className = 'alert alert-success alert-sm mt-2';
+        successIndicator.innerHTML = '<i class="bi bi-check-circle me-1"></i>Tipo salvo com sucesso!';
+        tipoElement.appendChild(successIndicator);
+        
+        // Desabilitar os campos após salvar
+        nomeInput.disabled = true;
+        palavrasInput.disabled = true;
+        
+        // Desabilitar o botão de salvar
+        const saveButton = tipoElement.querySelector('button[onclick*="salvarTipoPDF"]');
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="bi bi-check me-1"></i>Salvo';
+        }
+    }
+    
+    // Adicionar novo tipo automaticamente
+    setTimeout(() => {
+        adicionarTipoPDF();
+    }, 1500);
+}
+
+// Função para atualizar a estrutura visual
+function atualizarEstruturaVisual() {
+    console.log('Atualizando estrutura visual...');  // Debug
+    console.log('Tipos configurados:', tiposConfigurados);  // Debug
+    
+    tiposConfigurados.forEach((tipos, pastaId) => {
+        console.log(`Processando pastaId: ${pastaId} com ${tipos.length} tipos`);  // Debug
+        
+        const container = document.getElementById(`tipos_${pastaId}`);
+        const preview = document.getElementById(`preview_${pastaId}`);
+        
+        if (container) {
+            container.innerHTML = '';
+            console.log(`Container encontrado para ${pastaId}`);  // Debug
+            
+            tipos.forEach(tipo => {
+                const tipoElement = document.createElement('div');
+                tipoElement.className = 'd-flex align-items-center mb-1';
+                tipoElement.innerHTML = `
+                    <i class="bi bi-file-earmark-pdf text-primary me-2"></i>
+                    <span class="fw-medium text-primary">${tipo.nome}</span>
+                    <span class="badge bg-primary ms-2">Tipo PDF</span>
+                `;
+                container.appendChild(tipoElement);
+                console.log(`Tipo adicionado: ${tipo.nome}`);  // Debug
+            });
+        } else {
+            console.error(`Container não encontrado para pastaId: ${pastaId}`);  // Debug
+        }
+        
+        // Atualizar preview
+        if (preview && tipos.length > 0) {
+            preview.innerHTML = `
+                <span class="badge bg-success">
+                    ${tipos.length} tipo${tipos.length > 1 ? 's' : ''} configurado${tipos.length > 1 ? 's' : ''}
+                </span>
+            `;
+            console.log(`Preview atualizado para ${pastaId}: ${tipos.length} tipos`);  // Debug
+        }
+    });
+}
+
+// Função para atualizar o resumo da configuração
+function atualizarResumoConfiguracao() {
+    const container = document.getElementById('listaResumo');
+    container.innerHTML = '';
+    
+    tiposConfigurados.forEach((tipos, pastaId) => {
+        if (tipos.length > 0) {
+            const item = document.createElement('div');
+            item.className = 'list-group-item';
+            
+            // Determinar o nome da pasta para exibição
+            let nomePasta = pastaId.replace(/_/g, '/');
+            let icone = 'bi-folder-fill text-warning';
+            
+            if (pastaId === 'raiz') {
+                nomePasta = 'Pasta Raiz (Empresa)';
+                icone = 'bi-house-fill text-primary';
+            }
+            
+            item.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">
+                            <i class="bi ${icone} me-2"></i>
+                            ${nomePasta}
+                        </h6>
+                        <div class="ms-4">
+                            ${tipos.map(tipo => `
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="bi bi-file-earmark-pdf text-primary me-2"></i>
+                                    <span class="fw-medium">${tipo.nome}</span>
+                                    <small class="text-muted ms-2">(${tipo.palavras})</small>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <span class="badge bg-success">${tipos.length} tipo${tipos.length > 1 ? 's' : ''}</span>
+                </div>
+            `;
+            container.appendChild(item);
+        }
+    });
+}
+
+// Função para remover um tipo de PDF
+function removerTipoPDF(pastaId, tipoId) {
+    const tipoElement = document.getElementById(`tipo_${pastaId}_${tipoId}`);
+    if (tipoElement) {
+        tipoElement.remove();
+    }
+}
+
+// Função para carregar PDF selecionado
+function carregarPDF(file) {
+    if (!file) {
+        return;
+    }
+    
+    // Verificar se é um PDF
+    if (file.type !== 'application/pdf') {
+        alert('Por favor, selecione apenas arquivos PDF!');
+        return;
+    }
+    
+    // Criar URL para visualização
+    const url = URL.createObjectURL(file);
+    
+    // Mostrar visualizador
+    const visualizadorPDF = document.getElementById('visualizadorPDF');
+    const nomePDFAtual = document.getElementById('nomePDFAtual');
+    const pdfViewer = document.getElementById('pdfViewer');
+    const mensagemInicial = document.getElementById('mensagemInicial');
+    
+    nomePDFAtual.textContent = file.name;
+    pdfViewer.src = url;
+    
+    visualizadorPDF.style.display = 'block';
+    mensagemInicial.style.display = 'none';
+}
+
+// Função para formatar tamanho do arquivo
+function formatarTamanho(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Função para abrir PDF do sistema
+function abrirPDFSistema() {
+    // Criar input file oculto
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf';
+    input.style.display = 'none';
+    
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            carregarPDF(file);
+        }
+    };
+    
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+}
+
+// Função para visualizar um PDF (mantida para compatibilidade)
+function visualizarPDF(caminho, nome) {
+    const visualizadorPDF = document.getElementById('visualizadorPDF');
+    const nomePDFAtual = document.getElementById('nomePDFAtual');
+    const pdfViewer = document.getElementById('pdfViewer');
+    const mensagemInicial = document.getElementById('mensagemInicial');
+    
+    // Atualizar nome do PDF
+    nomePDFAtual.textContent = nome;
+    
+    // Mostrar mensagem de exemplo
+    pdfViewer.innerHTML = `
+        <div class="text-center py-4">
+            <i class="bi bi-file-earmark-pdf fs-1 text-danger mb-3"></i>
+            <h6>Visualizador de PDF</h6>
+            <p class="text-muted small">Arquivo: ${nome}</p>
+            <p class="text-muted small">Caminho: ${caminho}</p>
+            <div class="alert alert-info small">
+                <i class="bi bi-info-circle me-2"></i>
+                Analise o conteúdo deste PDF para escolher palavras-chave adequadas
+            </div>
+        </div>
+    `;
+    
+    visualizadorPDF.style.display = 'block';
+    mensagemInicial.style.display = 'none';
+}
+
+// Função para fechar o visualizador
+function fecharVisualizador() {
+    const visualizadorPDF = document.getElementById('visualizadorPDF');
+    const mensagemInicial = document.getElementById('mensagemInicial');
+    
+    // Limpar src do iframe para liberar memória
+    const pdfViewer = document.getElementById('pdfViewer');
+    if (pdfViewer.src) {
+        URL.revokeObjectURL(pdfViewer.src);
+        pdfViewer.src = '';
+    }
+    
+    visualizadorPDF.style.display = 'none';
+    mensagemInicial.style.display = 'block';
+}
+
+// Função para limpar toda a estrutura
+function limparEstrutura() {
+    if (confirm('Tem certeza que deseja limpar toda a estrutura? Isso removerá todos os tipos de PDF configurados.')) {
+        // Limpar seleção
+        document.querySelectorAll('.pasta-selector').forEach(el => {
+            el.style.backgroundColor = 'transparent';
+            el.style.border = 'none';
+        });
+        document.querySelectorAll('.pasta-selector-raiz').forEach(el => {
+            el.style.backgroundColor = 'transparent';
+            el.style.border = 'none';
+        });
+        document.getElementById('configuracaoPasta').style.display = 'none';
+        
+        // Limpar tipos
+        document.getElementById('tiposPDFContainer').innerHTML = '';
+        document.getElementById('tipos_raiz').innerHTML = ''; // Limpar tipos da pasta raiz
+        
+        // Limpar campos hidden do formulário
+        const form = document.getElementById('formEstrutura');
+        const hiddenInputs = form.querySelectorAll('input[name^="tipo_nome_"], input[name^="tipo_palavras_"]');
+        hiddenInputs.forEach(input => input.remove());
+        
+        // Limpar lista de pastas configuradas
+        pastasConfiguradas.clear();
+        tiposConfigurados.clear();
+        atualizarResumoConfiguracao();
+        atualizarEstruturaVisual();
+        
+        // Resetar contador
+        tipoCounter = 0;
+    }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Carregar dados do sessionStorage
+    carregarDados();
+    
+    // Inicializar resumo da configuração
+    atualizarResumoConfiguracao();
+    
+    // Adicionar listener para o formulário
+    document.getElementById('formEstrutura').addEventListener('submit', function(e) {
+        console.log('Formulário sendo enviado...');
+        console.log('Estrutura data:', document.getElementById('estruturaDataHidden').value);
+        console.log('Diretório raiz:', document.getElementById('diretorioRaizHidden').value);
+        
+        // Log de todos os campos do formulário
+        const formData = new FormData(this);
+        console.log('Todos os dados do formulário:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
+        }
+    });
+});
+</script>
+{% endblock %} 

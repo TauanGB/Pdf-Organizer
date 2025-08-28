@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizador de PDFs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);
+            min-height: 100vh;
+        }
+        .main-container {
+            padding: 20px;
+            min-height: 100vh;
+            width: 100%;
+        }
+        .card {
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .table-responsive {
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .progress {
+            border-radius: 0.5rem;
+        }
+        .btn {
+            border-radius: 0.5rem;
+        }
+        .row {
+            margin: 0;
+        }
+        .col-md-4, .col-md-8 {
+            padding: 0 15px;
+        }
+        
+        /* Melhorias para a tabela de resultados */
+        .results-table {
+            font-size: 0.75rem;
+        }
+        .results-table th {
+            white-space: nowrap;
+            min-width: 100px;
+            position: sticky;
+            top: 0;
+            background: #343a40;
+            z-index: 10;
+            padding: 0.4rem 0.3rem;
+        }
+        .results-table td {
+            vertical-align: middle;
+            max-width: 200px;
+            word-wrap: break-word;
+            padding: 0.4rem 0.3rem;
+        }
+        
+        /* Colunas específicas com larguras otimizadas */
+        .col-arquivo {
+            min-width: 120px;
+            max-width: 160px;
+        }
+        .col-status {
+            min-width: 100px;
+            max-width: 120px;
+        }
+        .col-cnpjs {
+            min-width: 80px;
+            max-width: 100px;
+        }
+        .col-cnpj-selecionado {
+            min-width: 90px;
+            max-width: 110px;
+        }
+        .col-cliente {
+            min-width: 100px;
+            max-width: 130px;
+        }
+        .col-tipo {
+            min-width: 100px;
+            max-width: 130px;
+        }
+        .col-destino {
+            min-width: 150px;
+            max-width: 250px;
+        }
+        .col-acoes {
+            min-width: 60px;
+            max-width: 80px;
+        }
+        
+        /* Scroll horizontal suave */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Tooltip para texto cortado */
+        .text-truncate {
+            position: relative;
+        }
+        .text-truncate:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            z-index: 1000;
+        }
+        
+        /* Responsividade melhorada */
+        @media (max-width: 768px) {
+            .col-md-4, .col-md-8 {
+                margin-bottom: 20px;
+            }
+            .results-table {
+                font-size: 0.7rem;
+            }
+            .results-table th,
+            .results-table td {
+                padding: 0.4rem 0.2rem;
+            }
+        }
+        
+        /* Indicador de scroll horizontal */
+        .scroll-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h2 class="mb-4 text-center text-primary">
+            <i class="fas fa-file-pdf"></i> Organizar PDFs
+        </h2>
+        
+        <!-- Alerta sobre a regra de CNPJ obrigatório -->
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Regra Importante:</strong> Apenas PDFs que contenham CNPJs válidos de clientes cadastrados serão movidos. 
+            O sistema identifica primeiro o cliente pelo CNPJ, depois determina o tipo de documento dentro da pasta do cliente.
+            <strong>Se houver múltiplos CNPJs conhecidos, será usado o SEGUNDO CNPJ.</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        
+        <div class="row">
+            <!-- Coluna Esquerda - Upload e Progresso -->
+            <div class="col-md-4">
+                <!-- Seção de Upload -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-upload"></i> 1. Selecionar PDFs</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="pdfFiles" class="form-label">Selecione os PDFs:</label>
+                                <input type="file" class="form-control" id="pdfFiles" name="pdfs" multiple accept=".pdf" required>
+                                <div class="form-text">Selecione um ou mais arquivos PDF para serem analisados e organizados.</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100" id="btnAnalisar">
+                                <i class="fas fa-search"></i> Analisar PDFs
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Seção de Progresso -->
+                <div class="card mb-4" id="progressSection" style="display: none;">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-cogs"></i> 2. Análise em Andamento</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="progressBar" class="form-label">Progresso da Análise</label>
+                            <div class="progress" style="height: 30px;">
+                                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%; font-size: 1.2rem;">0%</div>
+                            </div>
+                        </div>
+                        <div id="logContainer">
+                            <h6>Log de Processamento:</h6>
+                            <ul id="logList" class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção de Organização -->
+                <div class="card mb-4" id="organizeSection" style="display: none;">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-folder-open"></i> 4. Organizar PDFs</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Instruções:</strong> Os PDFs serão movidos APENAS se contiverem CNPJs válidos de clientes cadastrados. O sistema primeiro identifica o cliente pelo CNPJ, depois determina o tipo de documento dentro da pasta do cliente usando palavras-chave. <strong>Se houver múltiplos CNPJs conhecidos, será usado o SEGUNDO CNPJ.</strong>
+                        </div>
+                        <button type="button" class="btn btn-success btn-lg w-100" id="btnOrganizar">
+                            <i class="fas fa-folder-open"></i> Organizar PDFs
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Seção de Desfazer -->
+                <div class="card mb-4" id="undoSection" style="display: none;">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="fas fa-undo"></i> 5. Desfazer Última Operação</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Atenção:</strong> Esta ação irá desfazer a última operação de movimentação de arquivos. O arquivo será retornado à sua localização original.
+                        </div>
+                        <button type="button" class="btn btn-danger btn-lg w-100" id="btnDesfazer">
+                            <i class="fas fa-undo"></i> Desfazer Última Operação
+                        </button>
+                    </div>
+                </div>
+
+
+
+                <!-- Seção de Configuração -->
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="fas fa-cog"></i> Configurações</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="/adicionar_tipos_pdf" class="btn btn-outline-primary">
+                                <i class="fas fa-plus"></i> Adicionar Tipos de PDF
+                            </a>
+                            <button type="button" class="btn btn-outline-warning" id="btnLimparHistorico">
+                                <i class="fas fa-broom"></i> Limpar Histórico Inválido
+                            </button>
+                            <button type="button" class="btn btn-outline-info" id="btnConverterHistorico">
+                                <i class="fas fa-sync"></i> Converter Histórico Antigo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coluna Direita - Resultados em Tabela -->
+            <div class="col-md-8">
+                <!-- Seção de Resultados -->
+                <div class="card" id="resultsSection" style="display: none;">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-table"></i> 3. Resultados da Análise</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="summaryInfo" class="mb-3"></div>
+                        <div id="pdfResults"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicador de scroll horizontal -->
+    <div class="scroll-indicator" id="scrollIndicator">
+        <i class="fas fa-arrows-alt-h"></i> Arraste para ver mais colunas
+    </div>
+
+    <!-- Modal para detalhes do PDF -->
+    <div class="modal fade" id="pdfDetailsModal" tabindex="-1" aria-labelledby="pdfDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="pdfDetailsModalLabel">
+                        <i class="fas fa-file-pdf"></i> Detalhes do PDF
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="pdfDetailsContent">
+                    <!-- Conteúdo será preenchido dinamicamente -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    let analiseResults = [];
+
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        iniciarAnalise();
+    });
+
+    document.getElementById('btnOrganizar').addEventListener('click', function() {
+        organizarPDFs();
+    });
+
+    document.getElementById('btnDesfazer').addEventListener('click', function() {
+        desfazerUltimaOperacao();
+    });
+
+    document.getElementById('btnLimparHistorico').addEventListener('click', function() {
+        limparHistoricoInvalido();
+    });
+
+    document.getElementById('btnConverterHistorico').addEventListener('click', function() {
+        converterHistoricoAntigo();
+    });
+
+    function iniciarAnalise() {
+        const formData = new FormData();
+        const fileInput = document.getElementById('pdfFiles');
+        const files = fileInput.files;
+        
+        if (files.length === 0) {
+            alert('Por favor, selecione pelo menos um arquivo PDF.');
+            return;
+        }
+        
+        for (let file of files) {
+            formData.append('pdfs', file);
+        }
+        
+        // Mostrar seção de progresso
+        document.getElementById('progressSection').style.display = 'block';
+        
+        // Ocultar seções anteriores
+        document.getElementById('resultsSection').style.display = 'none';
+        document.getElementById('organizeSection').style.display = 'none';
+        document.getElementById('undoSection').style.display = 'none';
+        
+        // Desabilitar botão
+        const btnAnalisar = document.getElementById('btnAnalisar');
+        btnAnalisar.disabled = true;
+        btnAnalisar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando...';
+        
+        fetch('/analisar_pdfs_organizar', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                analiseResults = data.results;
+                mostrarResultados(data);
+            } else {
+                alert('Erro na análise: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao analisar os PDFs.');
+        })
+        .finally(() => {
+            btnAnalisar.disabled = false;
+            btnAnalisar.innerHTML = '<i class="fas fa-search"></i> Analisar PDFs';
+            document.getElementById('progressSection').style.display = 'none';
+        });
+    }
+
+    function mostrarResultados(data) {
+        const summaryInfo = document.getElementById('summaryInfo');
+        const pdfResults = document.getElementById('pdfResults');
+        const resultsSection = document.getElementById('resultsSection');
+        
+        // Calcular estatísticas adicionais
+        const pdfsComCNPJ = data.results.filter(pdf => pdf.cnpjs.length > 0).length;
+        const pdfsSemCNPJ = data.total_pdfs - pdfsComCNPJ;
+        const pdfsComCliente = data.results.filter(pdf => pdf.cliente && pdf.cliente.trim() !== '').length;
+        const pdfsSemCliente = pdfsComCNPJ - pdfsComCliente;
+        
+        // Resumo estatístico
+        summaryInfo.innerHTML = `
+            <div class="row text-center">
+                <div class="col-md-2">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h4>${data.total_pdfs}</h4>
+                            <p class="mb-0">Total de PDFs</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h4>${data.pdfs_identificados}</h4>
+                            <p class="mb-0">Serão Movidos</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h4>${pdfsComCNPJ}</h4>
+                            <p class="mb-0">Com CNPJ</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h4>${pdfsComCliente}</h4>
+                            <p class="mb-0">Com Cliente</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body">
+                            <h4>${pdfsSemCNPJ}</h4>
+                            <p class="mb-0">Sem CNPJ</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <h4>${data.pdfs_nao_identificados}</h4>
+                            <p class="mb-0">Não Movidos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Tabela de resultados com layout melhorado
+        let html = `
+            <div class="table-container">
+                <table class="table table-striped table-hover results-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="col-arquivo">Arquivo</th>
+                            <th class="col-status">Status</th>
+                            <th class="col-cnpjs">CNPJs</th>
+                            <th class="col-cnpj-selecionado">CNPJ Selecionado</th>
+                            <th class="col-cliente">Cliente</th>
+                            <th class="col-tipo">Tipo Identificado</th>
+                            <th class="col-destino">Destino</th>
+                            <th class="col-acoes">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        data.results.forEach((pdf, index) => {
+            const temCNPJ = pdf.cnpjs.length > 0;
+            const temCliente = pdf.cliente && pdf.cliente.trim() !== '';
+            const statusClass = pdf.identificado ? 'success' : (temCNPJ && temCliente ? 'warning' : (temCNPJ ? 'info' : 'danger'));
+            const statusText = pdf.identificado ? 'Identificado' : (temCNPJ && temCliente ? 'Cliente sem tipo' : (temCNPJ ? 'CNPJ sem cliente' : 'Sem CNPJ'));
+            const statusIcon = pdf.identificado ? 'fa-check-circle' : (temCNPJ && temCliente ? 'fa-exclamation-triangle' : (temCNPJ ? 'fa-user-slash' : 'fa-times-circle'));
+            const destinoText = pdf.identificado ? pdf.destino : 'Não movido';
+            const tipoText = pdf.identificado ? pdf.tipo : 'Não determinado';
+            const clienteText = pdf.cliente || 'Não identificado';
+            
+            // Informações sobre CNPJ selecionado
+            let cnpjSelecionadoText = 'N/A';
+            let cnpjSelecionadoClass = 'secondary';
+            if (pdf.cnpj_selecionado) {
+                const posicao = pdf.cnpj_selecionado.posicao;
+                const total = pdf.cnpj_selecionado.total_cnpjs_cadastrados;
+                if (total > 1 && posicao === 2) {
+                    cnpjSelecionadoText = `2º de ${total}`;
+                    cnpjSelecionadoClass = 'warning';
+                } else if (total === 1) {
+                    cnpjSelecionadoText = 'Único';
+                    cnpjSelecionadoClass = 'success';
+                } else {
+                    cnpjSelecionadoText = `${posicao}º de ${total}`;
+                    cnpjSelecionadoClass = 'info';
+                }
+            }
+            
+            html += `
+                <tr class="table-${statusClass === 'success' ? 'success' : statusClass === 'warning' ? 'warning' : statusClass === 'info' ? 'info' : 'danger'}">
+                    <td class="col-arquivo">
+                        <div class="text-truncate" title="${pdf.nome}">
+                            <strong>${pdf.nome}</strong>
+                        </div>
+                    </td>
+                    <td class="col-status">
+                        <span class="badge bg-${statusClass}">
+                            <i class="fas ${statusIcon}"></i> ${statusText}
+                        </span>
+                    </td>
+                    <td class="col-cnpjs">
+                        ${temCNPJ ? `
+                            <span class="badge bg-success">${pdf.cnpjs.length} CNPJ(s)</span>
+                            <button class="btn btn-sm btn-outline-info ms-1" 
+                                    onclick="mostrarCNPJs(${index})" 
+                                    title="Ver CNPJs">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        ` : `
+                            <span class="badge bg-danger">Nenhum CNPJ</span>
+                        `}
+                    </td>
+                    <td class="col-cnpj-selecionado">
+                        <span class="badge bg-${cnpjSelecionadoClass}">${cnpjSelecionadoText}</span>
+                    </td>
+                    <td class="col-cliente">
+                        <div class="text-truncate" title="${clienteText}">
+                            <span class="badge bg-${temCliente ? 'primary' : 'secondary'}">${clienteText}</span>
+                        </div>
+                    </td>
+                    <td class="col-tipo">
+                        <div class="text-truncate" title="${tipoText}">
+                            <span class="badge bg-secondary">${tipoText}</span>
+                        </div>
+                    </td>
+                    <td class="col-destino">
+                        <div class="text-truncate" title="${destinoText}">
+                            <small class="text-muted">${destinoText}</small>
+                        </div>
+                    </td>
+                    <td class="col-acoes">
+                        <button class="btn btn-sm btn-outline-primary" 
+                                onclick="verDetalhes(${index})" 
+                                title="Ver detalhes">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        pdfResults.innerHTML = html;
+        
+        // Mostrar seções
+        resultsSection.style.display = 'block';
+        mostrarSecaoOrganizar();
+        
+        // Configurar indicador de scroll
+        configurarScrollIndicator();
+    }
+
+    function configurarScrollIndicator() {
+        const tableContainer = document.querySelector('.table-container');
+        const scrollIndicator = document.getElementById('scrollIndicator');
+        
+        if (tableContainer) {
+            tableContainer.addEventListener('scroll', function() {
+                const scrollLeft = this.scrollLeft;
+                const maxScroll = this.scrollWidth - this.clientWidth;
+                
+                if (scrollLeft > 0 && scrollLeft < maxScroll) {
+                    scrollIndicator.style.display = 'block';
+                } else {
+                    scrollIndicator.style.display = 'none';
+                }
+            });
+            
+            // Verificar se há scroll horizontal necessário
+            setTimeout(() => {
+                if (tableContainer.scrollWidth > tableContainer.clientWidth) {
+                    scrollIndicator.style.display = 'block';
+                }
+            }, 100);
+        }
+    }
+
+    function mostrarCNPJs(index) {
+        const pdf = analiseResults[index];
+        let cnpjsHtml = '<div class="mt-2"><strong>CNPJs encontrados:</strong><br>';
+        pdf.cnpjs.forEach(cnpj => {
+            cnpjsHtml += `<span class="badge bg-secondary me-1 mb-1">${cnpj}</span>`;
+        });
+        cnpjsHtml += '</div>';
+        
+        // Usar SweetAlert2 ou modal simples
+        alert(`CNPJs encontrados em ${pdf.nome}:\n\n${pdf.cnpjs.join('\n')}`);
+    }
+
+    function verDetalhes(index) {
+        const pdf = analiseResults[index];
+        const temCNPJ = pdf.cnpjs.length > 0;
+        const temCliente = pdf.cliente && pdf.cliente.trim() !== '';
+        
+        // Determinar status e classe
+        let statusClass = 'success';
+        let statusText = 'Identificado';
+        let statusIcon = 'fa-check-circle';
+        
+        if (!temCNPJ) {
+            statusClass = 'danger';
+            statusText = 'Sem CNPJ';
+            statusIcon = 'fa-times-circle';
+        } else if (!temCliente) {
+            statusClass = 'info';
+            statusText = 'CNPJ sem cliente';
+            statusIcon = 'fa-user-slash';
+        } else if (!pdf.identificado) {
+            statusClass = 'warning';
+            statusText = 'Cliente sem tipo';
+            statusIcon = 'fa-exclamation-triangle';
+        }
+        
+        // Construir HTML do modal
+        let modalContent = `
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="alert alert-${statusClass}">
+                        <i class="fas ${statusIcon}"></i>
+                        <strong>Status:</strong> ${statusText}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-file"></i> Informações do Arquivo</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Nome:</strong> ${pdf.nome}</p>
+                            <p><strong>CNPJs encontrados:</strong> ${pdf.cnpjs.length}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-building"></i> Informações do Cliente</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Cliente:</strong> ${pdf.cliente || 'Não identificado'}</p>
+                            <p><strong>Tipo:</strong> ${pdf.tipo || 'Não determinado'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Seção de CNPJs
+        if (pdf.cnpjs.length > 0) {
+            modalContent += `
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-id-card"></i> CNPJs Encontrados</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+            `;
+            
+            pdf.cnpjs.forEach((cnpj, idx) => {
+                modalContent += `<span class="badge bg-secondary me-2 mb-1">${cnpj}</span>`;
+            });
+            
+            modalContent += `
+                                </div>
+            `;
+            
+            // Informações sobre CNPJ selecionado
+            if (pdf.cnpj_selecionado) {
+                const posicao = pdf.cnpj_selecionado.posicao;
+                const total = pdf.cnpj_selecionado.total_cnpjs_cadastrados;
+                let cnpjSelecionadoClass = 'success';
+                let cnpjSelecionadoText = 'Único';
+                
+                if (total > 1 && posicao === 2) {
+                    cnpjSelecionadoClass = 'warning';
+                    cnpjSelecionadoText = `2º de ${total}`;
+                } else if (total > 1) {
+                    cnpjSelecionadoClass = 'info';
+                    cnpjSelecionadoText = `${posicao}º de ${total}`;
+                }
+                
+                modalContent += `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>CNPJ Selecionado:</strong> ${pdf.cnpj_selecionado.cnpj}
+                        <span class="badge bg-${cnpjSelecionadoClass} ms-2">${cnpjSelecionadoText}</span>
+                    </div>
+                `;
+                
+                if (total > 1 && posicao === 2) {
+                    modalContent += `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Regra Aplicada:</strong> Usando o SEGUNDO CNPJ de ${total} encontrados
+                        </div>
+                    `;
+                } else if (total === 1) {
+                    modalContent += `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>Regra Aplicada:</strong> Usando o único CNPJ encontrado
+                        </div>
+                    `;
+                }
+            }
+            
+            modalContent += `
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Seção de destino
+        modalContent += `
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-folder"></i> Destino</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Caminho:</strong> ${pdf.destino || 'Não movido'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Avisos importantes
+        if (!temCNPJ) {
+            modalContent += `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Atenção:</strong> Este arquivo NÃO será movido pois não contém CNPJs válidos.
+                </div>
+            `;
+        } else if (!temCliente) {
+            modalContent += `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Atenção:</strong> Este arquivo NÃO será movido pois o CNPJ não está cadastrado como cliente.
+                </div>
+            `;
+        } else if (!pdf.identificado) {
+            modalContent += `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Atenção:</strong> Este arquivo NÃO será movido pois não foi possível determinar o tipo de documento dentro da pasta do cliente.
+                </div>
+            `;
+        }
+        
+        // Preencher o modal e exibir
+        document.getElementById('pdfDetailsContent').innerHTML = modalContent;
+        
+        // Atualizar título do modal
+        document.getElementById('pdfDetailsModalLabel').innerHTML = `
+            <i class="fas fa-file-pdf"></i> Detalhes: ${pdf.nome}
+        `;
+        
+        // Exibir o modal
+        const modal = new bootstrap.Modal(document.getElementById('pdfDetailsModal'));
+        modal.show();
+    }
+
+    function organizarPDFs() {
+        if (analiseResults.length === 0) {
+            alert('Nenhum resultado de análise disponível.');
+            return;
+        }
+        
+        const btnOrganizar = document.getElementById('btnOrganizar');
+        btnOrganizar.disabled = true;
+        btnOrganizar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Organizando...';
+        
+        fetch('/organizar_pdfs_executar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                results: analiseResults
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Organização concluída!\n\n${data.movidos} PDFs movidos com sucesso.\n${data.erros} erros encontrados.`);
+                // Mostrar seção de desfazer e ocultar seção de organizar após organização bem-sucedida
+                mostrarSecaoDesfazer();
+            } else {
+                alert('Erro na organização: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao organizar os PDFs.');
+        })
+        .finally(() => {
+            btnOrganizar.disabled = false;
+            btnOrganizar.innerHTML = '<i class="fas fa-folder-open"></i> Organizar PDFs';
+        });
+    }
+
+    function desfazerUltimaOperacao() {
+        if (!confirm('Tem certeza que deseja desfazer a última operação de movimentação?')) {
+            return;
+        }
+        
+        const btnDesfazer = document.getElementById('btnDesfazer');
+        btnDesfazer.disabled = true;
+        btnDesfazer.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Desfazendo...';
+        
+        fetch('/desfazer_ultima_operacao', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Operação desfeita com sucesso!\n\n' + data.message);
+                // Ocultar seção de desfazer e mostrar seção de organizar após operação bem-sucedida
+                mostrarSecaoOrganizar();
+            } else {
+                alert('Erro ao desfazer operação: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao desfazer a operação.');
+        })
+        .finally(() => {
+            btnDesfazer.disabled = false;
+            btnDesfazer.innerHTML = '<i class="fas fa-undo"></i> Desfazer Última Operação';
+        });
+    }
+
+    function mostrarSecaoDesfazer() {
+        // Ocultar seção de organizar
+        document.getElementById('organizeSection').style.display = 'none';
+        // Mostrar seção de desfazer
+        document.getElementById('undoSection').style.display = 'block';
+    }
+
+    function mostrarSecaoOrganizar() {
+        // Ocultar seção de desfazer
+        document.getElementById('undoSection').style.display = 'none';
+        // Mostrar seção de organizar
+        document.getElementById('organizeSection').style.display = 'block';
+    }
+
+    function limparHistoricoInvalido() {
+        if (!confirm('Tem certeza que deseja limpar operações inválidas do histórico? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+        
+        const btnLimpar = document.getElementById('btnLimparHistorico');
+        btnLimpar.disabled = true;
+        btnLimpar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Limpando...';
+        
+        console.log('Iniciando requisição para limpar histórico...');
+        
+        fetch('/limpar_historico_invalido', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            console.log('Status da resposta:', response.status);
+            console.log('Headers da resposta:', response.headers);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // Verificar se a resposta é JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                return response.text().then(text => {
+                    console.error('Resposta não é JSON:', text);
+                    throw new Error('Resposta do servidor não é JSON válido');
+                });
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            console.log('Dados recebidos:', data);
+            if (data.success) {
+                alert(data.message);
+            } else {
+                alert('Erro ao limpar histórico: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro detalhado:', error);
+            alert('Erro ao limpar histórico: ' + error.message);
+        })
+        .finally(() => {
+            btnLimpar.disabled = false;
+            btnLimpar.innerHTML = '<i class="fas fa-broom"></i> Limpar Histórico Inválido';
+        });
+    }
+
+    function converterHistoricoAntigo() {
+        if (!confirm('Tem certeza que deseja converter o histórico antigo para o novo formato? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+        
+        const btnConverter = document.getElementById('btnConverterHistorico');
+        btnConverter.disabled = true;
+        btnConverter.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Convertendo...';
+        
+        console.log('Iniciando requisição para converter histórico...');
+        
+        fetch('/converter_historico_antigo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            console.log('Status da resposta:', response.status);
+            console.log('Headers da resposta:', response.headers);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // Verificar se a resposta é JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                return response.text().then(text => {
+                    console.error('Resposta não é JSON:', text);
+                    throw new Error('Resposta do servidor não é JSON válido');
+                });
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            console.log('Dados recebidos:', data);
+            if (data.success) {
+                alert(data.message);
+            } else {
+                alert('Erro ao converter histórico: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro detalhado:', error);
+            alert('Erro ao converter histórico: ' + error.message);
+        })
+        .finally(() => {
+            btnConverter.disabled = false;
+            btnConverter.innerHTML = '<i class="fas fa-sync"></i> Converter Histórico Antigo';
+        });
+    }
+
+
+
+    // Atualizar progresso periodicamente
+    function atualizarProgresso() {
+        fetch('/status_organizacao')
+        .then(response => response.json())
+        .then(data => {
+            const progressBar = document.getElementById('progressBar');
+            const logList = document.getElementById('logList');
+            
+            progressBar.style.width = data.progress + '%';
+            progressBar.textContent = data.progress + '%';
+            
+            logList.innerHTML = '';
+            data.logs.forEach(function(log) {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = log;
+                logList.appendChild(li);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao atualizar progresso:', error);
+        });
+    }
+
+    // Função para inicializar o estado das seções
+    function inicializarSecoes() {
+        // Garantir que apenas uma seção esteja visível por vez
+        const organizeSection = document.getElementById('organizeSection');
+        const undoSection = document.getElementById('undoSection');
+        
+        // Se ambas estiverem visíveis, ocultar a de desfazer
+        if (organizeSection.style.display !== 'none' && undoSection.style.display !== 'none') {
+            undoSection.style.display = 'none';
+        }
+    }
+
+    // Inicializar quando a página carregar
+    document.addEventListener('DOMContentLoaded', function() {
+        inicializarSecoes();
+    });
+
+    // Atualizar progresso a cada segundo durante a análise
+    setInterval(atualizarProgresso, 1000);
+    </script>
+</body>
+</html> 

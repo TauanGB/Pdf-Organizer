@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h2 class="mb-4 text-center">Cadastro de CNPJs</h2>
+    <form>
+        <div class="mb-3">
+            <label for="cnpj" class="form-label">CNPJ</label>
+            <input type="text" class="form-control" id="cnpj" placeholder="Digite o CNPJ">
+        </div>
+        <div class="mb-3">
+            <label for="nome" class="form-label">Nome</label>
+            <input type="text" class="form-control" id="nome" placeholder="Digite o nome">
+        </div>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+    </form>
+{% endblock %} 

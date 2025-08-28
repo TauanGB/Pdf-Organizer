@@ -1,0 +1,406 @@
+{% extends 'base_cadastro.html' %}
+{% block content %}
+<div class="container-xl py-4">
+    <!-- Mensagens Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+            <i class="bi bi-house me-2"></i>Página Principal
+        </a>
+        <h1 class="display-4 text-primary fw-bold mb-0">Gestão de Dados</h1>
+        <div style="width: 120px;"></div> <!-- Espaçador para centralizar o título -->
+    </div>
+    <div class="row g-5">
+        <!-- Card CNPJs -->
+        <div class="col-lg-6">
+            <div class="card shadow border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-person-badge fs-2 text-primary me-3"></i>
+                        <h3 class="card-title mb-0">CNPJs Cadastrados</h3>
+                    </div>
+                    <form method="post" class="mb-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-5">
+                                <label for="cnpj" class="form-label">CNPJ</label>
+                                <input type="text" class="form-control" id="cnpj" name="cnpj" placeholder="Digite o CNPJ">
+                            </div>
+                            <div class="col-5">
+                                <label for="nome" class="form-label">Nome</label>
+                                <input type="text" class="form-control" id="nome" name="nome" placeholder="Digite o nome">
+                            </div>
+                            <div class="col-2 d-flex gap-2">
+                                <button type="submit" name="add_cnpj" class="btn btn-primary w-100" title="Adicionar"><i class="bi bi-plus-lg"></i></button>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold">CNPJs cadastrados:</span>
+                        <span class="badge bg-primary">{{ cnpjs|length }} CNPJs</span>
+                    </div>
+                    <div class="overflow-auto" style="max-height: 200px;">
+                        <ul class="list-group list-group-flush">
+                            {% for cnpj in cnpjs %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-building text-primary me-2"></i>
+                                            <div>
+                                                <strong class="text-primary">{{ cnpj }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ cnpjs[cnpj] }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <form method="post" style="display: inline;">
+                                        <input type="hidden" name="cnpj_remover" value="{{ cnpj }}">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                onclick="return confirm('Deseja remover o CNPJ {{ cnpj }}?')"
+                                                title="Remover CNPJ">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </li>
+                            {% else %}
+                                <li class="list-group-item text-muted">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    Nenhum CNPJ cadastrado.
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Card Estrutura -->
+        <div class="col-lg-6">
+            <div class="card shadow border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-diagram-3 fs-2 text-warning me-3"></i>
+                        <h3 class="card-title mb-0">Estruturação</h3>
+                    </div>
+                    <form method="post" class="mb-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-3">
+                                <label for="estrutura" class="form-label">Nome da Pasta</label>
+                                <input type="text" class="form-control" id="estrutura" name="estrutura" placeholder="Ex: Contábil">
+                            </div>
+                            <div class="col-3">
+                                <label for="tipo_pasta" class="form-label">Tipo</label>
+                                <select class="form-select" id="tipo_pasta" name="tipo_pasta" onchange="togglePastaPai()">
+                                    <option value="raiz">Pasta Raiz</option>
+                                    <option value="subpasta">Subpasta</option>
+                                </select>
+                            </div>
+                            <div class="col-4" id="pasta_pai_div" style="display:none;">
+                                <label for="pasta_pai" class="form-label">Pasta Pai</label>
+                                <select class="form-select" id="pasta_pai" name="pasta_pai">
+                                    <option value="">Selecione uma pasta</option>
+                                    {% for pasta in pastas %}
+                                        <option value="{{ pasta }}">{{ pasta }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-2 d-flex gap-2">
+                                <button type="submit" name="add_estrutura" class="btn btn-primary w-100" title="Adicionar"><i class="bi bi-plus-lg"></i></button>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="fw-semibold mb-2">Estruturas cadastradas:</div>
+                    <div class="overflow-auto" style="max-height: 200px;">
+						<div class="fw-semibold mb-2">NOME EMPRESA</div>
+                        {% macro render_tree(tree) %}
+                            <ul class="list-group list-group-flush ms-2">
+                                {% for node in tree %}
+                                    <li class="list-group-item">
+                                        <div class="d-flex align-items-center">
+                                            {% if node.tipo == 'pdf' %}
+                                                <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
+                                            {% else %}
+                                                <i class="bi bi-folder-fill text-warning me-2"></i>
+                                            {% endif %}
+                                            <strong>{{ node.nome }}</strong>
+                                        </div>
+                                        {% if node.palavras %}
+                                            <div class="ms-4 mt-1">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-tags me-1"></i>
+                                                    <strong>Palavras-chave:</strong> {{ node.palavras }}
+                                                </small>
+                                            </div>
+                                        {% endif %}
+                                        {% if node.pasta_destino %}
+                                            <div class="ms-4 mt-1">
+                                                <small class="text-info">
+                                                    <i class="bi bi-folder me-1"></i>
+                                                    <strong>Pasta:</strong> {{ node.pasta_destino }}
+                                                </small>
+                                            </div>
+                                        {% endif %}
+                                        {% if node.filhos %}
+                                            {{ render_tree(node.filhos) }}
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endmacro %}
+                        {% if estruturas_tree %}
+                            {{ render_tree(estruturas_tree) }}
+                        {% else %}
+                            <ul class="list-group"><li class="list-group-item text-muted">Nenhuma estrutura cadastrada.</li></ul>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Botão para adicionar tipos de PDF -->
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-outline-warning w-100" onclick="adicionarTiposPDF()">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>Editar Tipos de PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Seção Ações Rápidas -->
+    <div class="row mt-4">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow border-0">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-lightning fs-2 text-info me-3"></i>
+                        <h3 class="card-title mb-0">Ações Rápidas</h3>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <button type="button" class="btn btn-outline-primary w-100" onclick="autoReconhecerCNPJs()">
+                                <i class="bi bi-search"></i> Auto Reconhecer CNPJs
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button type="button" class="btn btn-outline-warning w-100" onclick="autoReconhecerEstrutura()">
+                                <i class="bi bi-magic"></i> Auto Reconhecer Estrutura
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Card Pasta Matriz -->
+    <div class="row mt-4">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow border-0">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-folder2-open fs-2 text-success me-3"></i>
+                        <h3 class="card-title mb-0">Pasta Matriz</h3>
+                    </div>
+                    <div class="mb-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-10">
+                                <label for="matriz" class="form-label">Caminho da Pasta Matriz</label>
+                                <input type="text" class="form-control" id="matriz" name="matriz" placeholder="Ex: C:/Documentos/PastaMatriz">
+                            </div>
+                            <div class="col-2 d-flex align-items-end">
+                                <button type="button" id="btn_selecionar_matriz" class="btn btn-success w-100" 
+                                        title="Selecionar pasta matriz usando janela nativa do sistema" 
+                                        onclick="selecionarDiretorio()">
+                                    <i class="bi bi-folder2-open"></i> Selecionar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <button type="button" id="btn_salvar_manual" class="btn btn-outline-primary btn-sm" onclick="salvarMatrizManual()" style="display: none;">
+                                <i class="bi bi-check"></i> Salvar Caminho Manual
+                            </button>
+                        </div>
+                        <!-- Alerta informativo -->
+                        <div class="alert alert-info alert-dismissible fade show mt-2" role="alert" id="alerta_selecao">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Dica:</strong> Se não aparecer uma janela nova, pressione <kbd>Win + Tab</kbd> e procure por uma janela com título "Selecionar Pasta Matriz".
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    </div>
+                    <div class="fw-semibold mb-2 mt-4">Pasta cadastrada:</div>
+                    <ul class="list-group">
+                        {% if matriz %}
+                            <li class="list-group-item">{{ matriz }}</li>
+                        {% else %}
+                            <li class="list-group-item text-muted">Nenhuma pasta matriz cadastrada.</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<script>
+function autoReconhecerCNPJs() {
+    // Redireciona para a página de análise de CNPJs
+    window.location.href = '/analisar_cnpjs';
+}
+
+function autoReconhecerEstrutura() {
+    // Função para auto reconhecer estrutura
+    window.location.href = '/reconhecer_estrutura';
+    // Aqui você pode adicionar a lógica para analisar arquivos e deduzir estrutura automaticamente
+}
+
+function togglePastaPai() {
+    const tipoPasta = document.getElementById('tipo_pasta').value;
+    const pastaPaiDiv = document.getElementById('pasta_pai_div');
+    if (tipoPasta === 'subpasta') {
+        pastaPaiDiv.style.display = 'block';
+    } else {
+        pastaPaiDiv.style.display = 'none';
+    }
+}
+
+function adicionarTiposPDF() {
+    // Função para adicionar tipos de PDF
+    window.location.href = '/adicionar_tipos_pdf';
+}
+
+function selecionarDiretorio() {
+    // Desabilitar o botão durante o processamento
+    const btn = document.getElementById('btn_selecionar_matriz');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Selecionando...';
+    
+    // Atualizar mensagem informativa
+    const alerta = document.getElementById('alerta_selecao');
+    if (alerta) {
+        alerta.innerHTML = `
+            <i class="bi bi-hourglass-split me-2"></i>
+            <strong>Abrindo janela de seleção...</strong> Se não aparecer uma janela nova, pressione <kbd>Win + Tab</kbd> e procure por uma janela com título "Selecionar Pasta Matriz".
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+    }
+    
+    // Fazer requisição para abrir o diálogo de seleção
+    fetch('/selecionar_diretorio', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Atualizar o campo de input com o diretório selecionado
+            document.getElementById('matriz').value = data.diretorio;
+            
+            // Mostrar mensagem de sucesso
+            alert('Pasta matriz selecionada com sucesso!');
+            
+            // Restaurar alerta original
+            if (alerta) {
+                alerta.innerHTML = `
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Dica:</strong> Se não aparecer uma janela nova, pressione <kbd>Win + Tab</kbd> e procure por uma janela com título "Selecionar Pasta Matriz".
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+            }
+            
+            // Recarregar a página para atualizar a lista de pastas cadastradas
+            window.location.reload();
+        } else {
+            // Se tkinter não estiver disponível, mostrar opção manual
+            if (data.message.includes('Tkinter não está disponível')) {
+                alert('Seleção automática não disponível. Use o campo de texto para inserir o caminho manualmente.');
+                document.getElementById('matriz').readOnly = false;
+                document.getElementById('btn_salvar_manual').style.display = 'inline-block';
+            } else if (data.message.includes('Explorador do Windows foi aberto')) {
+                // Atualizar alerta para instruções do explorador
+                if (alerta) {
+                    alerta.innerHTML = `
+                        <i class="bi bi-folder2-open me-2"></i>
+                        <strong>Explorador aberto!</strong> ${data.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                }
+            } else {
+                alert('Erro ao selecionar pasta: ' + data.message);
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao selecionar pasta. Use o campo de texto para inserir o caminho manualmente.');
+        document.getElementById('matriz').readOnly = false;
+        document.getElementById('btn_salvar_manual').style.display = 'inline-block';
+    })
+    .finally(() => {
+        // Reabilitar o botão
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    });
+}
+
+function salvarMatrizManual() {
+    const caminho = document.getElementById('matriz').value.trim();
+    if (!caminho) {
+        alert('Por favor, insira um caminho válido.');
+        return;
+    }
+    
+    // Fazer requisição para salvar o caminho manual
+    fetch('/salvar_matriz_manual', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({matriz: caminho})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Pasta matriz salva com sucesso!');
+            window.location.reload();
+        } else {
+            alert('Erro ao salvar pasta: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao salvar pasta.');
+    });
+}
+
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    togglePastaPai();
+    
+    // Carregar o diretório atual se existir
+    const matrizAtual = '{{ matriz }}';
+    if (matrizAtual && matrizAtual !== 'None') {
+        document.getElementById('matriz').value = matrizAtual;
+    }
+    
+    // Adicionar evento para detectar mudanças no campo de matriz
+    const campoMatriz = document.getElementById('matriz');
+    campoMatriz.addEventListener('input', function() {
+        if (this.value.trim()) {
+            document.getElementById('btn_salvar_manual').style.display = 'inline-block';
+        } else {
+            document.getElementById('btn_salvar_manual').style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %} 

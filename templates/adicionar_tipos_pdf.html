@@ -1,0 +1,612 @@
+{% extends 'base_cadastro.html' %}
+{% block content %}
+<div class="container-xl py-4">
+    <!-- Mensagens Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{{ url_for('cadastro_estrutura') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-2"></i>Voltar
+        </a>
+        <h1 class="display-4 text-primary fw-bold mb-0">Configurar Tipos de PDF</h1>
+        <div style="width: 120px;"></div>
+    </div>
+
+    <!-- Formulário Principal -->
+    <form id="configForm" method="post">
+        <input type="hidden" name="estrutura_data" id="estruturaDataHidden" value="">
+        <input type="hidden" name="diretorio_raiz" id="diretorioRaizHidden" value="">
+        
+        <div class="row g-4">
+            <!-- Coluna 1: Estrutura e Configuração -->
+            <div class="col-lg-7">
+                <!-- Estrutura Atual -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-diagram-3 me-2"></i>Estrutura de Pastas
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="estruturaContainer" class="border rounded p-3 bg-light" style="max-height: 300px; overflow-y: auto;">
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-arrow-clockwise fs-1 mb-3"></i>
+                                <h6>Carregando estrutura...</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuração de Tipos -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>Configuração de Tipos de PDF
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Seletor de Pasta -->
+                        <div class="mb-4">
+                            <label for="pastaSeletor" class="form-label fw-bold">
+                                <i class="bi bi-folder me-2"></i>Selecionar Pasta para Configurar:
+                            </label>
+                            <select class="form-select" id="pastaSeletor" onchange="selecionarPasta()">
+                                <option value="">-- Escolha uma pasta --</option>
+                                <option value="raiz">📁 Pasta Raiz (Empresa)</option>
+                                <optgroup label="📂 Pastas Disponíveis" id="pastasOptgroup">
+                                    <!-- Opções serão carregadas dinamicamente -->
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <!-- Área de Configuração -->
+                        <div id="configuracaoArea" class="border rounded p-4" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0 text-primary">
+                                    <i class="bi bi-gear me-2"></i>Configurando: <span id="pastaAtualNome"></span>
+                                </h6>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="adicionarNovoTipo()">
+                                    <i class="bi bi-plus-circle me-1"></i>Adicionar Tipo
+                                </button>
+                            </div>
+                            
+                            <div id="tiposContainer">
+                                <!-- Tipos serão adicionados aqui -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botões de Ação -->
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success btn-lg" onclick="salvarConfiguracao(event)">
+                                <i class="bi bi-check-lg me-2"></i>Salvar Configuração
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="limparConfiguracao()">
+                                <i class="bi bi-arrow-clockwise me-2"></i>Limpar Tudo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coluna 2: Visualizador de PDF -->
+            <div class="col-lg-5">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>Visualizador de PDF
+                        </h5>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <!-- Instruções -->
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Dica:</strong> Abra PDFs para se inspirar nas palavras-chave que você deve usar.
+                        </div>
+                        
+                        <!-- Botão para abrir PDF -->
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-outline-primary w-100" onclick="abrirPDFSistema()">
+                                <i class="bi bi-folder2-open me-2"></i>Abrir PDF do Sistema
+                            </button>
+                            <div class="form-text text-center mt-2">
+                                <small>Clique no botão acima para selecionar um PDF para visualizar</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Visualizador de PDF -->
+                        <div id="visualizadorPDF" class="border rounded flex-grow-1" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                                <h6 class="mb-0" id="nomePDFAtual">PDF Selecionado</h6>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="fecharVisualizador()">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="p-2 h-100">
+                                <iframe id="pdfViewer" width="100%" height="100%" style="min-height: 400px;" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                        
+                        <!-- Mensagem quando nenhum PDF está selecionado -->
+                        <div id="mensagemInicial" class="text-center text-muted py-4 flex-grow-1 d-flex flex-column justify-content-center">
+                            <i class="bi bi-file-earmark-pdf fs-1 mb-3"></i>
+                            <h6>Nenhum PDF selecionado</h6>
+                            <p class="small">Clique no botão acima para selecionar um PDF para visualizar</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+<script>
+// Variáveis globais
+let estruturaData = null;
+let diretorioRaiz = null;
+let configuracaoAtual = new Map(); // pastaId -> array de tipos
+let pastaAtual = null;
+let tipoCounter = 0;
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    carregarDados();
+});
+
+// Função para carregar dados
+function carregarDados() {
+    try {
+        estruturaData = {{ estrutura_data | tojson | safe }};
+        diretorioRaiz = '{{ diretorio_raiz }}';
+        
+        console.log('Dados carregados:', { estruturaData, diretorioRaiz });
+        
+        // Atualizar campos hidden
+        document.getElementById('estruturaDataHidden').value = JSON.stringify(estruturaData);
+        document.getElementById('diretorioRaizHidden').value = diretorioRaiz;
+        
+        // Renderizar estrutura
+        renderizarEstrutura();
+        carregarOpcoesPastas();
+        
+    } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        mostrarAlerta('Erro ao carregar dados: ' + error.message, 'danger');
+    }
+}
+
+// Função para renderizar estrutura
+function renderizarEstrutura() {
+    const container = document.getElementById('estruturaContainer');
+    container.innerHTML = '';
+    
+    if (!estruturaData || estruturaData.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-folder-x fs-1 mb-3"></i>
+                <h6>Nenhuma estrutura encontrada</h6>
+                <p class="small">Configure uma estrutura de pastas primeiro</p>
+            </div>
+        `;
+        return;
+    }
+    
+    estruturaData.forEach(item => {
+        const itemElement = criarElementoEstrutura(item, 0);
+        container.appendChild(itemElement);
+    });
+}
+
+// Função para criar elemento de estrutura
+function criarElementoEstrutura(item, nivel) {
+    const div = document.createElement('div');
+    div.className = 'estrutura-item mb-2';
+    div.setAttribute('data-pasta-id', item.caminho.replace(/[\/\\]/g, '_'));
+    
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'd-flex align-items-center p-2 rounded';
+    itemDiv.style.marginLeft = `${nivel * 20}px`;
+    itemDiv.style.backgroundColor = '#f8f9fa';
+    itemDiv.style.border = '1px solid #dee2e6';
+    
+    const icone = item.tipo === 'pasta' ? 'bi-folder-fill text-warning' : 'bi-file-earmark-pdf text-danger';
+    const badge = item.tipo === 'pasta' ? 'Pasta' : 'PDF';
+    const badgeClass = item.tipo === 'pasta' ? 'bg-secondary' : 'bg-danger';
+    
+    itemDiv.innerHTML = `
+        <i class="bi ${icone} me-2"></i>
+        <span class="fw-medium">${item.nome}</span>
+        <span class="badge ${badgeClass} ms-2">${badge}</span>
+        ${item.palavras_chave ? `<small class="text-muted ms-2">(${item.palavras_chave})</small>` : ''}
+    `;
+    
+    div.appendChild(itemDiv);
+    
+    // Adicionar subitens se for pasta
+    if (item.tipo === 'pasta' && item.filhos && item.filhos.length > 0) {
+        item.filhos.forEach(filho => {
+            const filhoElement = criarElementoEstrutura(filho, nivel + 1);
+            div.appendChild(filhoElement);
+        });
+    }
+    
+    return div;
+}
+
+// Função para carregar opções de pastas
+function carregarOpcoesPastas() {
+    const optgroup = document.getElementById('pastasOptgroup');
+    optgroup.innerHTML = '';
+    
+    if (!estruturaData) return;
+    
+    estruturaData.forEach(item => {
+        if (item.tipo === 'pasta') {
+            const option = document.createElement('option');
+            option.value = item.caminho.replace(/[\/\\]/g, '_');
+            option.textContent = `📁 ${item.nome}`;
+            optgroup.appendChild(option);
+            
+            // Adicionar subpastas
+            if (item.filhos && item.filhos.length > 0) {
+                item.filhos.forEach(filho => {
+                    if (filho.tipo === 'pasta') {
+                        const subOption = document.createElement('option');
+                        subOption.value = filho.caminho.replace(/[\/\\]/g, '_');
+                        subOption.textContent = `  └─ 📁 ${filho.nome}`;
+                        optgroup.appendChild(subOption);
+                    }
+                });
+            }
+        }
+    });
+}
+
+// Função para selecionar pasta
+function selecionarPasta() {
+    const seletor = document.getElementById('pastaSeletor');
+    const pastaId = seletor.value;
+    
+    if (!pastaId) {
+        document.getElementById('configuracaoArea').style.display = 'none';
+        return;
+    }
+    
+    // Determinar nome da pasta
+    let pastaNome = '';
+    if (pastaId === 'raiz') {
+        pastaNome = 'Pasta Raiz (Empresa)';
+    } else {
+        const pastaEncontrada = encontrarPastaPorId(pastaId);
+        pastaNome = pastaEncontrada ? pastaEncontrada.nome : pastaId.replace(/_/g, '/');
+    }
+    
+    pastaAtual = pastaId;
+    document.getElementById('pastaAtualNome').textContent = pastaNome;
+    document.getElementById('configuracaoArea').style.display = 'block';
+    
+    // Carregar tipos existentes
+    carregarTiposPasta(pastaId);
+}
+
+// Função para encontrar pasta por ID
+function encontrarPastaPorId(pastaId) {
+    function buscarRecursivamente(items) {
+        for (let item of items) {
+            if (item.caminho.replace(/[\/\\]/g, '_') === pastaId) {
+                return item;
+            }
+            if (item.filhos && item.filhos.length > 0) {
+                const encontrado = buscarRecursivamente(item.filhos);
+                if (encontrado) return encontrado;
+            }
+        }
+        return null;
+    }
+    
+    return buscarRecursivamente(estruturaData);
+}
+
+// Função para carregar tipos de uma pasta
+function carregarTiposPasta(pastaId) {
+    const container = document.getElementById('tiposContainer');
+    container.innerHTML = '';
+    tipoCounter = 0;
+    
+    // Carregar tipos existentes se houver
+    if (configuracaoAtual.has(pastaId)) {
+        configuracaoAtual.get(pastaId).forEach(tipo => {
+            adicionarTipoExistente(tipo);
+        });
+    }
+    
+    // Adicionar primeiro tipo vazio
+    adicionarNovoTipo();
+}
+
+// Função para adicionar novo tipo
+function adicionarNovoTipo() {
+    tipoCounter++;
+    const container = document.getElementById('tiposContainer');
+    
+    const tipoDiv = document.createElement('div');
+    tipoDiv.className = 'tipo-item mb-3 p-3 border rounded bg-light';
+    tipoDiv.id = `tipo_${pastaAtual}_${tipoCounter}`;
+    
+    tipoDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0 text-primary">
+                <i class="bi bi-file-earmark-pdf me-2"></i>Tipo de PDF ${tipoCounter}
+            </h6>
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removerTipo('${pastaAtual}', ${tipoCounter})">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+        
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label">Nome do tipo:</label>
+                <input type="text" 
+                       class="form-control" 
+                       name="tipo_nome_${pastaAtual}_${tipoCounter}"
+                       id="tipo_nome_${pastaAtual}_${tipoCounter}"
+                       placeholder="Ex: Contratos, Relatórios, Documentos"
+                       onchange="atualizarConfiguracao()">
+            </div>
+            <div class="col-12">
+                <label class="form-label">Palavras-chave (separadas por vírgulas):</label>
+                <input type="text" 
+                       class="form-control" 
+                       name="tipo_palavras_${pastaAtual}_${tipoCounter}"
+                       id="tipo_palavras_${pastaAtual}_${tipoCounter}"
+                       placeholder="Ex: contrato, documento, relatório"
+                       onchange="atualizarConfiguracao()">
+                <div class="form-text">Digite palavras-chave que identificam este tipo de PDF</div>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(tipoDiv);
+}
+
+// Função para adicionar tipo existente
+function adicionarTipoExistente(tipo) {
+    tipoCounter++;
+    const container = document.getElementById('tiposContainer');
+    
+    const tipoDiv = document.createElement('div');
+    tipoDiv.className = 'tipo-item mb-3 p-3 border rounded bg-success bg-opacity-10';
+    tipoDiv.id = `tipo_${pastaAtual}_${tipoCounter}`;
+    
+    tipoDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0 text-success">
+                <i class="bi bi-file-earmark-check me-2"></i>${tipo.nome}
+            </h6>
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removerTipo('${pastaAtual}', ${tipoCounter})">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+        
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label">Nome do tipo:</label>
+                <input type="text" 
+                       class="form-control" 
+                       name="tipo_nome_${pastaAtual}_${tipoCounter}"
+                       id="tipo_nome_${pastaAtual}_${tipoCounter}"
+                       value="${tipo.nome}"
+                       onchange="atualizarConfiguracao()">
+            </div>
+            <div class="col-12">
+                <label class="form-label">Palavras-chave:</label>
+                <input type="text" 
+                       class="form-control" 
+                       name="tipo_palavras_${pastaAtual}_${tipoCounter}"
+                       id="tipo_palavras_${pastaAtual}_${tipoCounter}"
+                       value="${tipo.palavras}"
+                       onchange="atualizarConfiguracao()">
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(tipoDiv);
+}
+
+// Função para remover tipo
+function removerTipo(pastaId, tipoId) {
+    const tipoElement = document.getElementById(`tipo_${pastaId}_${tipoId}`);
+    if (tipoElement) {
+        tipoElement.remove();
+        atualizarConfiguracao();
+    }
+}
+
+// Função para atualizar configuração
+function atualizarConfiguracao() {
+    if (!pastaAtual) return;
+    
+    const tipos = [];
+    const container = document.getElementById('tiposContainer');
+    const tipoElements = container.querySelectorAll('.tipo-item');
+    
+    tipoElements.forEach(element => {
+        const nomeInput = element.querySelector('input[name^="tipo_nome_"]');
+        const palavrasInput = element.querySelector('input[name^="tipo_palavras_"]');
+        
+        if (nomeInput && palavrasInput && nomeInput.value.trim() && palavrasInput.value.trim()) {
+            tipos.push({
+                nome: nomeInput.value.trim(),
+                palavras: palavrasInput.value.trim()
+            });
+        }
+    });
+    
+    configuracaoAtual.set(pastaAtual, tipos);
+}
+
+// Função para salvar configuração
+function salvarConfiguracao(event) {
+    event.preventDefault();
+    
+    // Verificar se há dados para salvar
+    if (configuracaoAtual.size === 0) {
+        mostrarAlerta('Nenhuma configuração para salvar. Configure pelo menos um tipo de PDF.', 'warning');
+        return false;
+    }
+    
+    // Verificar dados da estrutura
+    const estruturaDataHidden = document.getElementById('estruturaDataHidden');
+    const diretorioRaizHidden = document.getElementById('diretorioRaizHidden');
+    
+    if (!estruturaDataHidden.value || !diretorioRaizHidden.value) {
+        mostrarAlerta('Dados da estrutura não encontrados. Recarregue a página e tente novamente.', 'danger');
+        return false;
+    }
+    
+    // Criar campos hidden para todos os tipos
+    const form = document.getElementById('configForm');
+    
+    // Limpar campos hidden existentes
+    const existingHidden = form.querySelectorAll('input[name^="tipo_nome_"], input[name^="tipo_palavras_"]');
+    existingHidden.forEach(input => input.remove());
+    
+    // Adicionar novos campos hidden
+    configuracaoAtual.forEach((tipos, pastaId) => {
+        tipos.forEach((tipo, index) => {
+            const nomeHidden = document.createElement('input');
+            nomeHidden.type = 'hidden';
+            nomeHidden.name = `tipo_nome_${pastaId}_${index + 1}`;
+            nomeHidden.value = tipo.nome;
+            form.appendChild(nomeHidden);
+            
+            const palavrasHidden = document.createElement('input');
+            palavrasHidden.type = 'hidden';
+            palavrasHidden.name = `tipo_palavras_${pastaId}_${index + 1}`;
+            palavrasHidden.value = tipo.palavras;
+            form.appendChild(palavrasHidden);
+        });
+    });
+    
+    console.log('Enviando configuração:', {
+        estrutura: estruturaDataHidden.value,
+        diretorio: diretorioRaizHidden.value,
+        tipos: configuracaoAtual
+    });
+    
+    // Enviar formulário
+    form.submit();
+}
+
+// Função para limpar configuração
+function limparConfiguracao() {
+    if (confirm('Tem certeza que deseja limpar toda a configuração?')) {
+        configuracaoAtual.clear();
+        pastaAtual = null;
+        tipoCounter = 0;
+        
+        document.getElementById('pastaSeletor').value = '';
+        document.getElementById('configuracaoArea').style.display = 'none';
+        document.getElementById('tiposContainer').innerHTML = '';
+        
+        mostrarAlerta('Configuração limpa com sucesso!', 'success');
+    }
+}
+
+// Função para abrir PDF do sistema
+function abrirPDFSistema() {
+    // Criar input file oculto
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf';
+    input.style.display = 'none';
+    
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            carregarPDF(file);
+        }
+    };
+    
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+}
+
+// Função para carregar PDF selecionado
+function carregarPDF(file) {
+    if (!file) {
+        return;
+    }
+    
+    // Verificar se é um PDF
+    if (file.type !== 'application/pdf') {
+        alert('Por favor, selecione apenas arquivos PDF!');
+        return;
+    }
+    
+    // Criar URL para visualização
+    const url = URL.createObjectURL(file);
+    
+    // Mostrar visualizador
+    const visualizadorPDF = document.getElementById('visualizadorPDF');
+    const nomePDFAtual = document.getElementById('nomePDFAtual');
+    const pdfViewer = document.getElementById('pdfViewer');
+    const mensagemInicial = document.getElementById('mensagemInicial');
+    
+    nomePDFAtual.textContent = file.name;
+    pdfViewer.src = url;
+    
+    visualizadorPDF.style.display = 'block';
+    mensagemInicial.style.display = 'none';
+}
+
+// Função para fechar o visualizador
+function fecharVisualizador() {
+    const visualizadorPDF = document.getElementById('visualizadorPDF');
+    const mensagemInicial = document.getElementById('mensagemInicial');
+    
+    visualizadorPDF.style.display = 'none';
+    mensagemInicial.style.display = 'block';
+    
+    // Limpar o iframe
+    document.getElementById('pdfViewer').src = '';
+}
+
+// Função para mostrar alerta
+function mostrarAlerta(mensagem, tipo) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${tipo} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-xl');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-remover após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico - Organizador de PDFs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);
+            min-height: 100vh;
+        }
+        .main-container {
+            padding: 1rem;
+            max-width: 100%;
+        }
+        .header-card {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+            margin-bottom: 1rem;
+        }
+        .content-card {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+        }
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            background-color: #343a40 !important;
+            color: white !important;
+            font-size: 0.85rem;
+            padding: 0.5rem;
+        }
+        .table td {
+            font-size: 0.8rem;
+            padding: 0.5rem;
+            vertical-align: middle;
+        }
+        .operacao-item:hover {
+            background-color: #f8f9fa;
+        }
+        .badge {
+            font-size: 0.7em;
+        }
+        .table-responsive {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .stats-card {
+            transition: transform 0.2s;
+        }
+        .stats-card:hover {
+            transform: translateY(-2px);
+        }
+        .stats-card .card-body {
+            padding: 1rem;
+        }
+        .stats-card h3 {
+            font-size: 1.5rem;
+        }
+        .stats-card h6 {
+            font-size: 0.8rem;
+        }
+        .header-card h1 {
+            font-size: 1.5rem;
+        }
+        .content-card .card-header h5 {
+            font-size: 1rem;
+        }
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid main-container">
+        <div class="row">
+            <div class="col-12">
+                <!-- Header -->
+                <div class="header-card p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h1 class="text-primary mb-0">
+                            <i class="fas fa-history"></i> Histórico de Operações
+                        </h1>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+
+                {% if erro %}
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i> Erro ao carregar histórico: {{ erro }}
+                </div>
+                {% endif %}
+
+                {% if not historico %}
+                <div class="content-card p-3">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i> Nenhuma operação encontrada no histórico.
+                    </div>
+                </div>
+                {% else %}
+                
+                <!-- Filtros -->
+                <div class="content-card mb-3">
+                    <div class="card-header bg-light border-0 p-3" style="border-radius: 0.75rem 0.75rem 0 0;">
+                        <h5 class="mb-0 text-primary">
+                            <i class="fas fa-filter"></i> Filtros
+                        </h5>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="row g-2">
+                            <div class="col-lg-3 col-md-6">
+                                <label for="filtroMes" class="form-label fw-bold small">Mês/Ano:</label>
+                                <select class="form-select form-select-sm" id="filtroMes">
+                                    <option value="">Todos os períodos</option>
+                                    {% for mes_ano in historico.keys() %}
+                                    <option value="{{ mes_ano }}">{{ mes_ano }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-lg-3 col-md-6">
+                                <label for="filtroOperacao" class="form-label fw-bold small">Operação:</label>
+                                <select class="form-select form-select-sm" id="filtroOperacao">
+                                    <option value="">Todas as operações</option>
+                                    <option value="transferido">Transferido</option>
+                                    <option value="desfeito">Desfeito</option>
+                                </select>
+                            </div>
+                            <div class="col-lg-4 col-md-6">
+                                <label for="filtroArquivo" class="form-label fw-bold small">Arquivo:</label>
+                                <input type="text" class="form-control form-control-sm" id="filtroArquivo" placeholder="Digite o nome do arquivo...">
+                            </div>
+                            <div class="col-lg-2 col-md-6">
+                                <label class="form-label">&nbsp;</label>
+                                <button class="btn btn-primary btn-sm w-100" onclick="aplicarFiltros()">
+                                    <i class="fas fa-search"></i> Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estatísticas -->
+                <div class="row mb-3">
+                    <div class="col-xl-3 col-lg-6 col-md-6 mb-2">
+                        <div class="card bg-primary text-white stats-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-title mb-1">Total de Operações</h6>
+                                        <h3 id="totalOperacoes" class="mb-0">0</h3>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-list fa-lg opacity-75"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 mb-2">
+                        <div class="card bg-success text-white stats-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-title mb-1">Transferidos</h6>
+                                        <h3 id="totalTransferidos" class="mb-0">0</h3>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-arrow-right fa-lg opacity-75"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 mb-2">
+                        <div class="card bg-warning text-white stats-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-title mb-1">Desfeitos</h6>
+                                        <h3 id="totalDesfeitos" class="mb-0">0</h3>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-undo fa-lg opacity-75"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 mb-2">
+                        <div class="card bg-info text-white stats-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-title mb-1">Meses/Anos</h6>
+                                        <h3 id="totalMeses" class="mb-0">{{ historico|length }}</h3>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-calendar fa-lg opacity-75"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de Operações -->
+                <div class="content-card">
+                    <div class="card-header bg-light border-0 p-3" style="border-radius: 0.75rem 0.75rem 0 0;">
+                        <h5 class="mb-0 text-primary">
+                            <i class="fas fa-list-alt"></i> Operações Realizadas
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="tabelaHistorico">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width: 100px;">Data/Hora</th>
+                                        <th style="min-width: 150px;">Arquivo</th>
+                                        <th style="min-width: 100px;">Operação</th>
+                                        <th style="min-width: 250px;">Descrição</th>
+                                        <th style="min-width: 200px;">Local Original</th>
+                                        <th style="min-width: 200px;">Novo Local</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mes_ano, operacoes in historico.items() %}
+                                        {% for operacao in operacoes %}
+                                        <tr class="operacao-item" 
+                                            data-mes="{{ mes_ano }}" 
+                                            data-operacao="{{ operacao.operacao }}"
+                                            data-arquivo="{{ operacao.arquivo }}">
+                                            <td>
+                                                <div class="fw-bold text-primary small">{{ operacao.dia }}/{{ mes_ano }}</div>
+                                                <small class="text-muted">{{ operacao.timestamp.split('T')[1][:8] if operacao.timestamp else '' }}</small>
+                                            </td>
+                                            <td>
+                                                <strong class="text-dark small">{{ operacao.arquivo }}</strong>
+                                            </td>
+                                            <td>
+                                                {% if operacao.operacao == 'transferido' %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-arrow-right"></i> Transferido
+                                                    </span>
+                                                {% elif operacao.operacao == 'desfeito' %}
+                                                    <span class="badge bg-warning">
+                                                        <i class="fas fa-undo"></i> Desfeito
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ operacao.operacao }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">{{ operacao.descricao }}</small>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted font-monospace">{{ operacao.local_antigo }}</small>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted font-monospace">{{ operacao.novo_local }}</small>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        atualizarEstatisticas();
+    });
+
+    function aplicarFiltros() {
+        const filtroMes = document.getElementById('filtroMes').value;
+        const filtroOperacao = document.getElementById('filtroOperacao').value;
+        const filtroArquivo = document.getElementById('filtroArquivo').value.toLowerCase();
+        
+        const linhas = document.querySelectorAll('.operacao-item');
+        let totalVisiveis = 0;
+        let totalTransferidos = 0;
+        let totalDesfeitos = 0;
+        
+        linhas.forEach(linha => {
+            const mes = linha.getAttribute('data-mes');
+            const operacao = linha.getAttribute('data-operacao');
+            const arquivo = linha.getAttribute('data-arquivo').toLowerCase();
+            
+            let mostrar = true;
+            
+            if (filtroMes && mes !== filtroMes) mostrar = false;
+            if (filtroOperacao && operacao !== filtroOperacao) mostrar = false;
+            if (filtroArquivo && !arquivo.includes(filtroArquivo)) mostrar = false;
+            
+            if (mostrar) {
+                linha.style.display = '';
+                totalVisiveis++;
+                if (operacao === 'transferido') totalTransferidos++;
+                if (operacao === 'desfeito') totalDesfeitos++;
+            } else {
+                linha.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('totalOperacoes').textContent = totalVisiveis;
+        document.getElementById('totalTransferidos').textContent = totalTransferidos;
+        document.getElementById('totalDesfeitos').textContent = totalDesfeitos;
+    }
+
+    function atualizarEstatisticas() {
+        const linhas = document.querySelectorAll('.operacao-item');
+        let totalTransferidos = 0;
+        let totalDesfeitos = 0;
+        
+        linhas.forEach(linha => {
+            const operacao = linha.getAttribute('data-operacao');
+            if (operacao === 'transferido') totalTransferidos++;
+            if (operacao === 'desfeito') totalDesfeitos++;
+        });
+        
+        document.getElementById('totalOperacoes').textContent = linhas.length;
+        document.getElementById('totalTransferidos').textContent = totalTransferidos;
+        document.getElementById('totalDesfeitos').textContent = totalDesfeitos;
+    }
+
+    // Aplicar filtros ao pressionar Enter
+    document.getElementById('filtroArquivo').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            aplicarFiltros();
+        }
+    });
+
+    // Aplicar filtros automaticamente ao mudar seleções
+    document.getElementById('filtroMes').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtroOperacao').addEventListener('change', aplicarFiltros);
+    </script>
+</body>
+</html>

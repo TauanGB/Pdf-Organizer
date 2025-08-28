@@ -3,3 +3,12 @@ build/
 setup.py
 main.spec
 OrganizePDF.spec
+uploads/
+testes/
+__pycache__/
+venv/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.log

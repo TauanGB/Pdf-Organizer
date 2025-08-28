@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1 class="text-center mb-4 text-primary">Organizador de PDFs</h1>
+    <div class="row g-4 align-items-start">
+        <div class="col-md-12 d-flex flex-column gap-3">
+            <a href="{{ url_for('organizar_pdfs') }}" class="btn btn-success btn-lg">
+                <i class="fas fa-folder-open"></i> Organizar PDFs
+                <small class="d-block">Função Principal</small>
+            </a>
+            <a href="{{ url_for('cadastro_estrutura') }}" class="btn btn-outline-primary btn-lg">
+                <i class="fas fa-cog"></i> Cadastro de Dados
+                <small class="d-block">Configurar Estrutura</small>
+            </a>
+            <a href="{{ url_for('visualizar_historico') }}" class="btn btn-outline-info btn-lg">
+                <i class="fas fa-history"></i> Visualizar Histórico
+                <small class="d-block">Ver Operações Realizadas</small>
+            </a>
+            <a href="#" onclick="window.close();" class="btn btn-danger btn-lg">
+                <i class="fas fa-times"></i> Sair
+            </a>
+        </div>
+    </div>
+
+{% endblock %} 
