@@ -12,3 +12,5 @@ venv/
 *.pyd
 .Python
 *.log
+dist/
+build_executable.py

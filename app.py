@@ -28,8 +28,14 @@ DESFAZER_TEMP_JSON = 'desfazer_temp.json'
 
 
 def abrir_navegador():
-    time.sleep(1)
-    webbrowser.open('http://localhost:5000')
+    """Abre o navegador após um pequeno delay para garantir que o servidor esteja rodando"""
+    time.sleep(2)  # Aumentar o delay para garantir que o servidor esteja pronto
+    try:
+        webbrowser.open('http://localhost:5000')
+        print("🌐 Navegador aberto automaticamente")
+    except Exception as e:
+        print(f"⚠️ Erro ao abrir navegador: {e}")
+        print("💡 Acesse manualmente: http://localhost:5000")
 
 def ler_clientes():
     if os.path.exists(CLIENTES_JSON):
@@ -1927,6 +1933,42 @@ def visualizar_historico():
         print(f"Erro ao visualizar histórico: {str(e)}")
         return render_template('visualizar_historico.html', historico={}, erro=str(e))
 
+@app.route('/sair', methods=['POST'])
+def sair_aplicacao():
+    """Encerra o aplicativo de forma segura"""
+    try:
+        print("🔄 Encerrando aplicação...")
+        
+        # Função para encerrar o servidor em uma thread separada
+        def shutdown_server():
+            time.sleep(1)  # Pequeno delay para permitir resposta ao cliente
+            print("👋 Aplicação encerrada com sucesso!")
+            
+            # Tentar encerrar de forma mais elegante primeiro
+            try:
+                import signal
+                import sys
+                # Enviar sinal de encerramento
+                os.kill(os.getpid(), signal.SIGTERM)
+            except:
+                # Se falhar, usar método mais direto
+                os._exit(0)
+        
+        # Iniciar thread para encerrar o servidor
+        threading.Thread(target=shutdown_server, daemon=True).start()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Aplicação será encerrada em alguns segundos...'
+        })
+        
+    except Exception as e:
+        print(f"Erro ao encerrar aplicação: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao encerrar aplicação: {str(e)}'
+        })
+
 @app.route('/buscar_cnpj_api', methods=['POST'])
 def buscar_cnpj_api():
     """Busca dados de um CNPJ na API externa"""
@@ -1962,6 +2004,46 @@ def buscar_cnpj_api():
         print(f"Erro ao buscar CNPJ na API: {str(e)}")
         return jsonify({'success': False, 'message': f'Erro ao buscar CNPJ: {str(e)}'})
 
+def signal_handler(signum, frame):
+    """Handler para capturar sinais de encerramento"""
+    print("\n🔄 Recebido sinal de encerramento...")
+    print("👋 Encerrando aplicação Pdf-Organizer...")
+    
+    # Limpeza final (se necessário)
+    try:
+        # Aqui você pode adicionar qualquer limpeza necessária
+        # Por exemplo, salvar dados, fechar conexões, etc.
+        pass
+    except Exception as e:
+        print(f"⚠️ Erro durante limpeza: {e}")
+    
+    print("✅ Aplicação encerrada com sucesso!")
+    os._exit(0)
+
 if __name__ == '__main__':
-    threading.Thread(target=abrir_navegador).start()
-    app.run(debug=True)
+    # Configurar handler de sinal para encerramento elegante
+    import signal
+    signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
+    signal.signal(signal.SIGTERM, signal_handler)  # Sinal de encerramento
+    
+    # Verificar se deve abrir o navegador automaticamente
+    import sys
+    abrir_browser = True
+    
+    # Se o argumento --no-browser for passado, não abrir o navegador
+    if '--no-browser' in sys.argv:
+        abrir_browser = False
+        print("🚫 Navegador não será aberto automaticamente")
+    
+    if abrir_browser:
+        threading.Thread(target=abrir_navegador).start()
+    
+    print("🚀 Iniciando servidor Pdf-Organizer...")
+    print("📋 Acesse: http://localhost:5000")
+    print("💡 Pressione Ctrl+C para encerrar manualmente")
+    
+    try:
+        app.run(debug=False, use_reloader=False)
+    except KeyboardInterrupt:
+        print("\n🔄 Encerramento solicitado pelo usuário...")
+        signal_handler(signal.SIGINT, None)

@@ -15,9 +15,92 @@
                 <i class="fas fa-history"></i> Visualizar Histórico
                 <small class="d-block">Ver Operações Realizadas</small>
             </a>
-            <a href="#" onclick="window.close();" class="btn btn-danger btn-lg">
+            <button onclick="sairAplicacao()" class="btn btn-danger btn-lg">
                 <i class="fas fa-times"></i> Sair
-            </a>
+                <small class="d-block">Encerrar Aplicação</small>
+            </button>
+            <small class="text-muted">
+                <i class="fas fa-info-circle"></i> Dica: Pressione <kbd>ESC</kbd> para sair rapidamente
+            </small>
+        </div>
+    </div>
+
+    <script>
+    function sairAplicacao() {
+        // Verificar se é a janela principal (não um popup)
+        if (window.opener) {
+            // Se for popup, apenas fechar
+            window.close();
+            return;
+        }
+        
+        if (confirm('Tem certeza que deseja encerrar o aplicativo Pdf-Organizer?')) {
+            // Mostrar loading
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Encerrando...';
+            btn.disabled = true;
+            
+            // Fazer requisição para encerrar o aplicativo
+            fetch('/sair', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Mostrar mensagem de sucesso
+                    btn.innerHTML = '<i class="fas fa-check"></i> Encerrando...';
+                    
+                    // Mostrar mensagem para o usuário
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'alert alert-success mt-3';
+                    messageDiv.innerHTML = '<i class="fas fa-info-circle"></i> ' + data.message;
+                    btn.parentNode.appendChild(messageDiv);
+                    
+                    // Aguardar um pouco e fechar a janela
+                    setTimeout(() => {
+                        // Tentar fechar a janela
+                        try {
+                            window.close();
+                        } catch (e) {
+                            // Se não conseguir fechar, mostrar instrução
+                            messageDiv.className = 'alert alert-info mt-3';
+                            messageDiv.innerHTML = '<i class="fas fa-info-circle"></i> Aplicação encerrada. Você pode fechar esta janela manualmente.';
+                        }
+                    }, 3000);
+                } else {
+                    // Em caso de erro, restaurar botão
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    alert('Erro ao encerrar aplicação: ' + data.message);
+                }
+            })
+            .catch(error => {
+                // Em caso de erro de rede, restaurar botão
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                console.error('Erro:', error);
+                
+                // Verificar se o servidor está offline
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    alert('Servidor não está respondendo. O aplicativo pode ter sido encerrado.');
+                } else {
+                    alert('Erro ao encerrar aplicação. Tente novamente.');
+                }
+            });
+        }
+    }
+    
+    // Adicionar listener para tecla ESC
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            sairAplicacao();
+        }
+    });
+    </script>
         </div>
     </div>
 

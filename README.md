@@ -2,6 +2,10 @@
 
 Sistema inteligente para organização automática de PDFs baseado em CNPJs e estruturas personalizadas.
 
+[![Download](https://img.shields.io/badge/Download-Executável-brightgreen)](https://github.com/seu-usuario/Pdf-Organizer/releases)
+[![Python](https://img.shields.io/badge/Python-3.8+-blue)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
 ## 🚀 Funcionalidades Principais
 
 ### 1. **Organização Automática de PDFs** ⭐ (Função Principal)
@@ -27,10 +31,41 @@ Sistema inteligente para organização automática de PDFs baseado em CNPJs e es
 
 ## 📋 Pré-requisitos
 
+### Para Usuários do Executável
+- **Windows**: Windows 7 ou superior
+- **Linux**: Distribuições baseadas em Ubuntu/Debian
+- **macOS**: macOS 10.12 ou superior
+- **Navegador**: Chrome, Firefox, Safari ou Edge
+
+### Para Desenvolvedores
 - Python 3.8+
 - Dependências listadas em `requirements.txt`
 
+## 📥 Downloads
+
+### Versões Disponíveis
+
+| Plataforma | Arquivo | Tamanho | Download |
+|------------|---------|---------|----------|
+| Windows | `Pdf-Organizer.exe` | ~50MB | [Download](https://github.com/seu-usuario/Pdf-Organizer/releases/latest/download/Pdf-Organizer.exe) |
+| Linux | `Pdf-Organizer` | ~45MB | [Download](https://github.com/seu-usuario/Pdf-Organizer/releases/latest/download/Pdf-Organizer) |
+| macOS | `Pdf-Organizer` | ~45MB | [Download](https://github.com/seu-usuario/Pdf-Organizer/releases/latest/download/Pdf-Organizer-mac) |
+
+### 📋 Notas de Release
+
+- **v1.0.0**: Versão inicial com funcionalidades básicas
+- **v1.1.0**: Melhorias na interface e correções de bugs
+- **v1.2.0**: Adicionado suporte a múltiplos CNPJs
+
 ## 🛠️ Instalação
+
+### Opção 1: Executável (Recomendado para Usuários Finais)
+
+1. **Baixe a versão executável** mais recente na seção [Releases](https://github.com/seu-usuario/Pdf-Organizer/releases)
+2. **Execute o arquivo** `Pdf-Organizer.exe` (Windows) ou `Pdf-Organizer` (Linux/Mac)
+3. **Acesse no navegador**: `http://localhost:5000`
+
+### Opção 2: Código Fonte (Para Desenvolvedores)
 
 1. Clone o repositório:
 ```bash
@@ -50,6 +85,10 @@ python app.py
 
 4. Acesse no navegador: `http://localhost:5000`
 
+**Opções de execução:**
+- `python app.py` - Abre o navegador automaticamente
+- `python app.py --no-browser` - Não abre o navegador automaticamente
+
 ## 🎯 Como Usar - Organização de PDFs
 
 ### Passo 1: Configurar a Estrutura
@@ -65,8 +104,29 @@ python app.py
 4. Revise os resultados da análise
 5. Clique em "Organizar PDFs" para mover os arquivos
 
+## 🚪 Como Encerrar o Aplicativo
+
+### Método 1: Botão Sair (Recomendado)
+1. Clique no botão **"Sair"** na página principal
+2. Confirme a ação no diálogo
+3. O aplicativo será encerrado automaticamente
+
+### Método 2: Tecla de Atalho
+- Pressione **ESC** em qualquer página para sair rapidamente
+
+### Método 3: Terminal/Console
+- Pressione **Ctrl+C** no terminal onde o aplicativo está rodando
+
+### Método 4: Executável
+- Feche a janela do navegador
+- O aplicativo será encerrado automaticamente após alguns segundos
+
 ## 🧪 Teste Rápido
 
+### Para Usuários do Executável
+O software já vem com dados de exemplo integrados. Basta executar o aplicativo e usar a funcionalidade de teste.
+
+### Para Desenvolvedores
 Para testar a funcionalidade com dados de exemplo:
 
 ```bash
@@ -107,6 +167,7 @@ Isso criará:
 - **Bootstrap 5**: Interface responsiva
 - **JavaScript**: Interatividade da interface
 - **Font Awesome**: Ícones
+- **PyInstaller**: Empacotamento para versão executável
 
 ## 📁 Estrutura de Arquivos
 
@@ -121,10 +182,20 @@ Pdf-Organizer/
 ├── Clientes.json         # CNPJs cadastrados
 ├── estrutura.json        # Estruturas de organização
 ├── Historico.json        # Histórico de operações
-└── teste_organizacao.py  # Script de teste
+├── testes/               # Arquivos de teste (não incluídos no executável)
+├── build/                # Arquivos de build (gerados automaticamente)
+├── main.spec             # Configuração PyInstaller
+└── OrganizePDF.spec      # Configuração alternativa PyInstaller
 ```
 
 ## 🎯 Características Técnicas
+
+### Versão Executável
+- **Aplicação standalone**: Não requer instalação de Python
+- **Interface web integrada**: Servidor web embutido
+- **Dados persistentes**: Configurações salvas localmente
+- **Multiplataforma**: Windows, Linux e macOS
+- **Auto-inicialização**: Abre navegador automaticamente
 
 ### Organização Automática
 - **Análise inteligente**: Identifica tipos de PDF por CNPJ e palavras-chave
@@ -147,6 +218,54 @@ Pdf-Organizer/
 - Funcionalidades interativas com JavaScript
 - Feedback visual em tempo real
 - Ícones intuitivos com Font Awesome
+- Encerramento elegante do aplicativo
+
+## 🚀 Criando o Executável
+
+### Para Desenvolvedores
+
+#### Opção 1: Script Automático (Recomendado)
+
+Use o script de build incluído:
+
+```bash
+python build_executable.py
+```
+
+Este script:
+- Verifica se o PyInstaller está instalado
+- Instala automaticamente se necessário
+- Cria o executável com todas as configurações corretas
+- Exclui arquivos de teste e desenvolvimento
+
+#### Opção 2: Comando Manual
+
+1. **Instale o PyInstaller**:
+```bash
+pip install pyinstaller
+```
+
+2. **Crie o executável**:
+```bash
+# Windows
+pyinstaller --onefile --windowed --name "Pdf-Organizer" app.py
+
+# Linux/Mac
+pyinstaller --onefile --name "Pdf-Organizer" app.py
+```
+
+3. **O executável será criado** na pasta `dist/`
+
+### Configurações PyInstaller
+
+O projeto inclui arquivos de configuração:
+- `main.spec` - Configuração principal
+- `OrganizePDF.spec` - Configuração alternativa
+
+Para usar uma configuração específica:
+```bash
+pyinstaller main.spec
+```
 
 ## 🤝 Contribuição
 
@@ -155,6 +274,36 @@ Pdf-Organizer/
 3. Commit suas mudanças
 4. Push para a branch
 5. Abra um Pull Request
+
+## 🔧 Troubleshooting
+
+### Problemas Comuns com o Executável
+
+#### O executável não abre
+- **Windows**: Verifique se o antivírus não está bloqueando
+- **Linux**: Execute `chmod +x Pdf-Organizer` para dar permissão
+- **macOS**: Clique com botão direito → "Abrir" para contornar Gatekeeper
+
+#### Erro de porta em uso
+- Feche outras instâncias do aplicativo
+- Reinicie o computador se necessário
+- Use `netstat -ano | findstr :5000` (Windows) para verificar
+
+#### Navegador não abre automaticamente
+- Acesse manualmente: `http://localhost:5000`
+- Verifique se o firewall não está bloqueando
+
+#### Problemas com PDFs
+- Verifique se os PDFs não estão corrompidos
+- Certifique-se de que os PDFs contêm texto (não são apenas imagens)
+- Use PDFs com CNPJs válidos
+
+### Suporte
+
+Para problemas não listados acima:
+1. Verifique as [Issues](https://github.com/seu-usuario/Pdf-Organizer/issues)
+2. Abra uma nova issue com detalhes do problema
+3. Inclua logs de erro se disponíveis
 
 ## 📄 Licença
 
