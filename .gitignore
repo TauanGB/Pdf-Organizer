@@ -14,3 +14,5 @@ venv/
 *.log
 dist/
 build_executable.py
+verificar_icone.py
+testar_icone.py

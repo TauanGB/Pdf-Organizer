@@ -14,6 +14,10 @@ import tkinter as tk
 from tkinter import filedialog
 import subprocess
 import platform
+import logging
+# ATENÇÃO: Este código suprime os logs do Werkzeug para manter o console limpo
+# Se precisar debugar problemas de rede, comente esta linha
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
 app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta_aqui'
@@ -32,10 +36,8 @@ def abrir_navegador():
     time.sleep(2)  # Aumentar o delay para garantir que o servidor esteja pronto
     try:
         webbrowser.open('http://localhost:5000')
-        print("🌐 Navegador aberto automaticamente")
     except Exception as e:
-        print(f"⚠️ Erro ao abrir navegador: {e}")
-        print("💡 Acesse manualmente: http://localhost:5000")
+        pass  # Silenciar erros de navegador
 
 def ler_clientes():
     if os.path.exists(CLIENTES_JSON):
@@ -72,26 +74,20 @@ def salvar_cliente(cnpj, nome):
 
 def remover_cliente(cnpj):
     """Remove um cliente do arquivo JSON"""
-    print(f"Tentando remover CNPJ: {cnpj}")
     if os.path.exists(CLIENTES_JSON):
         try:
             with open(CLIENTES_JSON, 'r', encoding='utf-8') as f:
                 clientes = json.load(f)
-                print(f"CNPJs atuais: {list(clientes.keys())}")
                 if isinstance(clientes, dict) and cnpj in clientes:
                     del clientes[cnpj]
                     with open(CLIENTES_JSON, 'w', encoding='utf-8') as f:
                         json.dump(clientes, f, ensure_ascii=False, indent=2)
-                    print(f"CNPJ {cnpj} removido com sucesso!")
                     return True
                 else:
-                    print(f"CNPJ {cnpj} não encontrado!")
                     return False
         except Exception as e:
-            print(f"Erro ao remover CNPJ {cnpj}: {str(e)}")
             return False
     else:
-        print("Arquivo de clientes não encontrado!")
         return False
 
 def ler_estrutura():
@@ -177,7 +173,6 @@ def abrir_explorador_windows():
         return None
         
     except Exception as e:
-        print(f"Erro ao abrir explorador Windows: {e}")
         return None
 
 def validar_cnpj(cnpj):
@@ -260,7 +255,6 @@ def processar_pdf(pdf_file):
     try:
         # Verificar se o arquivo é válido
         if not pdf_file or not pdf_file.filename:
-            print("Arquivo PDF inválido ou vazio")
             return []
             
         # Resetar a posição do cursor do arquivo para o início
@@ -269,7 +263,6 @@ def processar_pdf(pdf_file):
         # Verificar se o arquivo tem conteúdo
         conteudo = pdf_file.read()
         if not conteudo:
-            print(f"Arquivo {pdf_file.filename} está vazio")
             return []
             
         # Resetar novamente para o início
@@ -279,7 +272,6 @@ def processar_pdf(pdf_file):
         pdf_reader = PyPDF2.PdfReader(io.BytesIO(conteudo))
         
         if len(pdf_reader.pages) == 0:
-            print(f"PDF {pdf_file.filename} não possui páginas")
             return []
         
         texto_completo = ""
@@ -289,11 +281,9 @@ def processar_pdf(pdf_file):
                 if texto_pagina:
                     texto_completo += texto_pagina + " "
             except Exception as e:
-                print(f"Erro ao extrair texto da página do PDF {pdf_file.filename}: {str(e)}")
                 continue
         
         if not texto_completo.strip():
-            print(f"Nenhum texto extraído do PDF {pdf_file.filename}")
             return []
         
         # Extrai CNPJs do texto
@@ -301,7 +291,6 @@ def processar_pdf(pdf_file):
         
         return cnpjs
     except Exception as e:
-        print(f"Erro ao processar PDF {pdf_file.filename}: {str(e)}")
         return []
 
 def buscar_dados_empresa(cnpj_limpo):
@@ -334,7 +323,6 @@ def buscar_dados_empresa(cnpj_limpo):
         else:
             return None
     except Exception as e:
-        print(f"Erro ao buscar dados da empresa {cnpj_limpo}: {str(e)}")
         return None
 
 def calcular_repeticoes_cnpjs(cnpjs_encontrados):
@@ -499,7 +487,6 @@ def analisar_estrutura_diretorio(diretorio):
         except PermissionError:
             return []
         except Exception as e:
-            print(f"Erro ao processar diretório {caminho}: {str(e)}")
             return []
     
     # Processa o diretório raiz
@@ -765,11 +752,6 @@ def adicionar_tipos_pdf():
                 key.startswith('tipo_adicional_palavras_')):
                 palavras_chave[key] = value.strip()
         
-        print(f"Dados recebidos no POST:")
-        print(f"estrutura_data: {estrutura_data[:200]}...")
-        print(f"diretorio_raiz: {diretorio_raiz}")
-        print(f"palavras_chave: {palavras_chave}")
-        
         if estrutura_data and diretorio_raiz:
             try:
                 # Salvar estrutura com tipos de PDF
@@ -778,7 +760,6 @@ def adicionar_tipos_pdf():
                 flash('Tipos de PDF adicionados com sucesso!', 'success')
                 return redirect(url_for('cadastro_estrutura'))
             except Exception as e:
-                print(f"Erro ao salvar: {str(e)}")
                 flash(f'Erro ao salvar tipos de PDF: {str(e)}', 'error')
                 return redirect(url_for('adicionar_tipos_pdf'))
         else:
@@ -866,7 +847,6 @@ def excluir_itens_estrutura():
             # Se o item está no nível raiz
             if nome_item in estrutura_dict:
                 del estrutura_dict[nome_item]
-                print(f"Item '{nome_item}' removido da estrutura")
                 return True
             
             # Procurar em subpastas
@@ -875,7 +855,6 @@ def excluir_itens_estrutura():
                     # Se encontrou o item nesta pasta
                     if nome_item in pasta_conteudo:
                         del pasta_conteudo[nome_item]
-                        print(f"Item '{nome_item}' removido da pasta '{pasta_nome}'")
                         return True
                     
                     # Procurar recursivamente em subpastas
@@ -898,7 +877,6 @@ def excluir_itens_estrutura():
         if not os.path.exists(ESTRUTURA_JSON):
             with open(ESTRUTURA_JSON, 'w', encoding='utf-8') as f:
                 json.dump([{}, ''], f, ensure_ascii=False, indent=2)
-            print(f"Arquivo de estrutura criado: {ESTRUTURA_JSON}")
         
         with open(ESTRUTURA_JSON, 'w', encoding='utf-8') as f:
             json.dump(estrutura, f, indent=2, ensure_ascii=False)
@@ -909,7 +887,6 @@ def excluir_itens_estrutura():
         })
         
     except Exception as e:
-        print(f"Erro ao excluir itens: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -921,18 +898,11 @@ def salvar_estrutura_com_palavras_chave(diretorio_raiz, estrutura_data, palavras
         # Processar dados da estrutura
         import json
         
-        print(f"=== INÍCIO DA FUNÇÃO salvar_estrutura_com_palavras_chave ===")
-        print(f"Dados recebidos - estrutura_data: {estrutura_data[:200]}...")  # Debug
-        print(f"Diretório raiz: {diretorio_raiz}")  # Debug
-        print(f"Palavras-chave recebidas: {palavras_chave}")  # Debug
-        
         # Carregar estrutura existente
         estrutura_existente = ler_estrutura()
-        print(f"Estrutura existente carregada: {estrutura_existente}")  # Debug
         
         # Parse do JSON da estrutura do formulário
         estrutura_form = json.loads(estrutura_data)
-        print(f"Estrutura do formulário processada: {len(estrutura_form)} itens")  # Debug
         
         # Usar a estrutura existente como base (primeiro item da lista)
         if isinstance(estrutura_existente, list) and len(estrutura_existente) > 0:
@@ -942,34 +912,25 @@ def salvar_estrutura_com_palavras_chave(diretorio_raiz, estrutura_data, palavras
         
         def processar_tipos_pdf_novos(estrutura_atual):
             """Processa apenas os novos tipos de PDF sem sobrescrever a estrutura existente"""
-            print(f"Processando novos tipos de PDF na estrutura com {len(estrutura_atual)} itens")  # Debug
             for item in estrutura_atual:
-                print(f"Item: {item['nome']} - Tipo: {item['tipo']} - Filhos: {len(item.get('filhos', []))}")  # Debug
                 if item['tipo'] == 'pasta':
                     # Usar o caminho como ID, mas substituir caracteres problemáticos
                     pasta_id = item['caminho'].replace('/', '_').replace('\\', '_')
-                    print(f"Processando pasta: {item['nome']} (ID: {pasta_id})")  # Debug
                     
                     # Processar tipos de PDF para esta pasta
                     tipos_pdf = {}
                     for key, value in palavras_chave.items():
-                        print(f"Verificando chave: {key} = {value}")  # Debug
                         if key.startswith(f'tipo_nome_{pasta_id}_'):
                             tipo_id = key.replace(f'tipo_nome_{pasta_id}_', '')
                             nome_tipo = value.strip()
                             palavras_tipo = palavras_chave.get(f'tipo_palavras_{pasta_id}_{tipo_id}', '').strip()
                             
-                            print(f"Tipo encontrado: {nome_tipo} com palavras: {palavras_tipo}")  # Debug
-                            
                             if nome_tipo and palavras_tipo:
                                 tipos_pdf[nome_tipo] = [p.strip() for p in palavras_tipo.split(',') if p.strip()]
-                    
-                    print(f"Novos tipos de PDF para {item['nome']}: {tipos_pdf}")  # Debug
                     
                     # Adicionar novos tipos à pasta existente (se existir)
                     if item['nome'] in estrutura_para_salvar:
                         if tipos_pdf:
-                            print(f"Adicionando novos tipos de PDF à pasta existente {item['nome']}: {tipos_pdf}")  # Debug
                             estrutura_para_salvar[item['nome']].update(tipos_pdf)
                     else:
                         # Se a pasta não existe, criar com os novos tipos
@@ -993,12 +954,8 @@ def salvar_estrutura_com_palavras_chave(diretorio_raiz, estrutura_data, palavras
                 nome_tipo = value.strip()
                 palavras_tipo = palavras_chave.get(f'tipo_palavras_raiz_{tipo_id}', '').strip()
                 
-                print(f"Tipo raiz encontrado: {nome_tipo} com palavras: {palavras_tipo}")  # Debug
-                
                 if nome_tipo and palavras_tipo:
                     tipos_pdf_raiz[nome_tipo] = [p.strip() for p in palavras_tipo.split(',') if p.strip()]
-        
-        print(f"Tipos de PDF para pasta raiz: {tipos_pdf_raiz}")  # Debug
         
         # Processar tipos de PDF adicionais
         tipos_pdf_adicionais = {}
@@ -1012,8 +969,6 @@ def salvar_estrutura_com_palavras_chave(diretorio_raiz, estrutura_data, palavras
                     nome_tipo = value.strip()
                     palavras_tipo = palavras_chave.get(f'tipo_adicional_palavras_{pasta_id}_{tipo_id}', '').strip()
                     
-                    print(f"Tipo adicional encontrado: {nome_tipo} para pasta {pasta_id} com palavras: {palavras_tipo}")  # Debug
-                    
                     if nome_tipo and palavras_tipo:
                         if pasta_id == 'raiz':
                             # Adicionar à pasta raiz
@@ -1023,8 +978,6 @@ def salvar_estrutura_com_palavras_chave(diretorio_raiz, estrutura_data, palavras
                             if pasta_id not in tipos_pdf_adicionais:
                                 tipos_pdf_adicionais[pasta_id] = {}
                             tipos_pdf_adicionais[pasta_id][nome_tipo] = [p.strip() for p in palavras_tipo.split(',') if p.strip()]
-        
-        print(f"Tipos de PDF adicionais: {tipos_pdf_adicionais}")  # Debug
         
         # Adicionar tipos da pasta raiz diretamente na estrutura final
         if tipos_pdf_raiz:
@@ -1056,30 +1009,17 @@ def salvar_estrutura_com_palavras_chave(diretorio_raiz, estrutura_data, palavras
                             break
                     if pasta_encontrada:
                         break
-            
-            if not pasta_encontrada:
-                print(f"Aviso: Pasta com ID {pasta_id} não encontrada na estrutura")  # Debug
-        
-        print(f"Estrutura final para salvar: {estrutura_para_salvar}")  # Debug
         
         # Salvar no arquivo JSON no formato [estrutura_modelo, diretorio_matriz]
         # Verificar se o arquivo existe, se não existir, criar com estrutura vazia
         if not os.path.exists(ESTRUTURA_JSON):
             with open(ESTRUTURA_JSON, 'w', encoding='utf-8') as f:
                 json.dump([{}, ''], f, ensure_ascii=False, indent=2)
-            print(f"Arquivo de estrutura criado: {ESTRUTURA_JSON}")
         
         with open(ESTRUTURA_JSON, 'w', encoding='utf-8') as f:
             json.dump([estrutura_para_salvar, diretorio_raiz], f, ensure_ascii=False, indent=2)
             
-        print(f"Estrutura salva com sucesso em {ESTRUTURA_JSON}")  # Debug
-        print(f"=== FIM DA FUNÇÃO salvar_estrutura_com_palavras_chave ===")
-            
     except Exception as e:
-        print(f"Erro ao salvar estrutura: {str(e)}")
-        print(f"Tipo de erro: {type(e).__name__}")
-        import traceback
-        traceback.print_exc()
         raise e
 
 def ler_historico():
@@ -1088,13 +1028,10 @@ def ler_historico():
         if os.path.exists(HISTORICO_JSON):
             with open(HISTORICO_JSON, 'r', encoding='utf-8') as f:
                 historico = json.load(f)
-                print(f"Histórico carregado de {HISTORICO_JSON}")
                 return historico
         else:
-            print(f"Arquivo de histórico não encontrado: {HISTORICO_JSON}")
             return {}
     except Exception as e:
-        print(f"Erro ao ler histórico: {str(e)}")
         return {}
 
 def salvar_historico(historico):
@@ -1104,13 +1041,10 @@ def salvar_historico(historico):
         if not os.path.exists(HISTORICO_JSON):
             with open(HISTORICO_JSON, 'w', encoding='utf-8') as f:
                 json.dump({}, f, ensure_ascii=False, indent=2)
-            print(f"Arquivo de histórico criado: {HISTORICO_JSON}")
         
         with open(HISTORICO_JSON, 'w', encoding='utf-8') as f:
             json.dump(historico, f, ensure_ascii=False, indent=2)
-        print(f"Histórico salvo com sucesso em {HISTORICO_JSON}")
     except Exception as e:
-        print(f"Erro ao salvar histórico: {str(e)}")
         raise e
 
 def adicionar_ao_historico(arquivo_original, destino, descricao="", operacao="transferido"):
@@ -1156,10 +1090,8 @@ def salvar_dados_desfazer(operacoes):
         with open(DESFAZER_TEMP_JSON, 'w', encoding='utf-8') as f:
             json.dump(dados_desfazer, f, ensure_ascii=False, indent=2)
         
-        print(f"Dados de desfazer salvos em {DESFAZER_TEMP_JSON}")
         return True
     except Exception as e:
-        print(f"Erro ao salvar dados de desfazer: {str(e)}")
         return False
 
 def ler_dados_desfazer():
@@ -1170,7 +1102,6 @@ def ler_dados_desfazer():
                 return json.load(f)
         return None
     except Exception as e:
-        print(f"Erro ao ler dados de desfazer: {str(e)}")
         return None
 
 def limpar_dados_desfazer():
@@ -1178,10 +1109,8 @@ def limpar_dados_desfazer():
     try:
         if os.path.exists(DESFAZER_TEMP_JSON):
             os.remove(DESFAZER_TEMP_JSON)
-            print("Dados de desfazer removidos")
         return True
     except Exception as e:
-        print(f"Erro ao limpar dados de desfazer: {str(e)}")
         return False
 
 def mover_arquivo_com_historico(arquivo_origem, arquivo_destino, descricao=""):
@@ -1252,28 +1181,21 @@ def converter_historico_antigo():
         
         if convertidos > 0:
             salvar_historico(historico)
-            print(f"Convertidas {convertidos} operações do formato antigo")
         
         return convertidos
         
     except Exception as e:
-        print(f"Erro ao converter histórico: {str(e)}")
         return 0
 
 def limpar_historico_invalido():
     """Remove operações do histórico onde os arquivos não existem mais"""
     try:
-        print("Lendo histórico...")
         historico = ler_historico()
         operacoes_removidas = 0
-        
-        print(f"Histórico carregado com {len(historico)} meses/anos")
         
         for mes_ano in list(historico.keys()):
             operacoes_mes = historico[mes_ano]
             operacoes_para_remover = []
-            
-            print(f"Verificando mês/ano: {mes_ano} com {len(operacoes_mes)} operações")
             
             for operacao in operacoes_mes:
                 # Verificar se é uma operação de transferência (estrutura antiga ou nova)
@@ -1282,7 +1204,6 @@ def limpar_historico_invalido():
                     if operacao.get('operacao') == 'transferido':
                         destino_atual = operacao.get('novo_local', '')
                         if destino_atual and not os.path.exists(destino_atual):
-                            print(f"Arquivo não encontrado: {destino_atual}")
                             operacoes_para_remover.append(operacao)
                 else:
                     # Estrutura antiga (texto)
@@ -1291,30 +1212,23 @@ def limpar_historico_invalido():
                         if len(partes) == 2:
                             destino_atual = partes[1]
                             if not os.path.exists(destino_atual):
-                                print(f"Arquivo não encontrado: {destino_atual}")
                                 operacoes_para_remover.append(operacao)
             
             # Remover operações inválidas
             for operacao in operacoes_para_remover:
                 operacoes_mes.remove(operacao)
                 operacoes_removidas += 1
-                print(f"Operação removida: {operacao}")
             
             # Se não há mais operações no mês, remover o mês
             if not operacoes_mes:
                 del historico[mes_ano]
-                print(f"Mês/ano removido: {mes_ano}")
         
         if operacoes_removidas > 0:
-            print(f"Salvando histórico com {operacoes_removidas} operações removidas")
             salvar_historico(historico)
         
         return operacoes_removidas
         
     except Exception as e:
-        print(f"Erro na função limpar_historico_invalido: {str(e)}")
-        import traceback
-        traceback.print_exc()
         raise e
 
 def desfazer_ultima_operacao():
@@ -1329,8 +1243,6 @@ def desfazer_ultima_operacao():
         operacoes = dados_desfazer['operacoes']
         arquivos_desfeitos = 0
         erros = 0
-        
-        print(f"Desfazendo {len(operacoes)} operações...")
         
         for operacao in operacoes:
             try:
@@ -1349,13 +1261,10 @@ def desfazer_ultima_operacao():
                                          f"Desfeito: {operacao.get('descricao', '')}", "desfeito")
                     
                     arquivos_desfeitos += 1
-                    print(f"Arquivo desfeito: {nome_arquivo}")
                 else:
-                    print(f"Arquivo não encontrado no destino: {arquivo_destino}")
                     erros += 1
                     
             except Exception as e:
-                print(f"Erro ao desfazer {operacao.get('arquivo', 'arquivo')}: {str(e)}")
                 erros += 1
         
         # Limpar dados temporários após desfazer
@@ -1367,7 +1276,6 @@ def desfazer_ultima_operacao():
             return False, f"Nenhum arquivo foi desfeito. {erros} erro(s)."
             
     except Exception as e:
-        print(f"Erro na função desfazer_ultima_operacao: {str(e)}")
         return False, f"Erro ao desfazer operação: {str(e)}"
 
 def nome_cliente_para_pasta(nome_cliente):
@@ -1388,7 +1296,6 @@ def nome_cliente_para_pasta(nome_cliente):
         return nome_limpo if nome_limpo else "cliente_desconhecido"
         
     except Exception as e:
-        print(f"Erro ao converter nome do cliente para pasta: {str(e)}")
         return "cliente_desconhecido"
 
 def identificar_cliente_por_cnpj(cnpj_formatado, clientes):
@@ -1399,7 +1306,6 @@ def identificar_cliente_por_cnpj(cnpj_formatado, clientes):
         return nome_cliente if nome_cliente else None
         
     except Exception as e:
-        print(f"Erro ao identificar cliente por CNPJ: {str(e)}")
         return None
 
 def identificar_tipo_dentro_pasta_cliente(arquivo, estrutura, nome_cliente):
@@ -1407,7 +1313,6 @@ def identificar_tipo_dentro_pasta_cliente(arquivo, estrutura, nome_cliente):
     try:
         # Verificar se o arquivo é válido
         if not arquivo or not arquivo.filename:
-            print("Arquivo inválido ou vazio")
             return None, None
             
         # Resetar a posição do cursor do arquivo para o início
@@ -1416,7 +1321,6 @@ def identificar_tipo_dentro_pasta_cliente(arquivo, estrutura, nome_cliente):
         # Verificar se o arquivo tem conteúdo
         conteudo = arquivo.read()
         if not conteudo:
-            print("Arquivo está vazio")
             return None, None
             
         # Resetar novamente para o início
@@ -1426,7 +1330,6 @@ def identificar_tipo_dentro_pasta_cliente(arquivo, estrutura, nome_cliente):
         pdf_reader = PyPDF2.PdfReader(io.BytesIO(conteudo))
         
         if len(pdf_reader.pages) == 0:
-            print("PDF não possui páginas")
             return None, None
             
         texto_completo = ""
@@ -1436,11 +1339,9 @@ def identificar_tipo_dentro_pasta_cliente(arquivo, estrutura, nome_cliente):
                 if texto_pagina:
                     texto_completo += texto_pagina + " "
             except Exception as e:
-                print(f"Erro ao extrair texto da página: {str(e)}")
                 continue
         
         if not texto_completo.strip():
-            print("Nenhum texto extraído do PDF")
             return None, None
             
         texto_completo = texto_completo.lower()
@@ -1493,7 +1394,6 @@ def identificar_tipo_dentro_pasta_cliente(arquivo, estrutura, nome_cliente):
         return None, None
         
     except Exception as e:
-        print(f"Erro ao identificar tipo dentro da pasta do cliente: {str(e)}")
         return None, None
 
 def identificar_tipo_pdf_por_palavras_chave(arquivo, estrutura):
@@ -1501,7 +1401,6 @@ def identificar_tipo_pdf_por_palavras_chave(arquivo, estrutura):
     try:
         # Verificar se o arquivo é válido
         if not arquivo or not arquivo.filename:
-            print("Arquivo inválido ou vazio")
             return None
             
         # Resetar a posição do cursor do arquivo para o início
@@ -1510,7 +1409,6 @@ def identificar_tipo_pdf_por_palavras_chave(arquivo, estrutura):
         # Verificar se o arquivo tem conteúdo
         conteudo = arquivo.read()
         if not conteudo:
-            print("Arquivo está vazio")
             return None
             
         # Resetar novamente para o início
@@ -1520,7 +1418,6 @@ def identificar_tipo_pdf_por_palavras_chave(arquivo, estrutura):
         pdf_reader = PyPDF2.PdfReader(io.BytesIO(conteudo))
         
         if len(pdf_reader.pages) == 0:
-            print("PDF não possui páginas")
             return None
             
         texto_completo = ""
@@ -1530,11 +1427,9 @@ def identificar_tipo_pdf_por_palavras_chave(arquivo, estrutura):
                 if texto_pagina:
                     texto_completo += texto_pagina + " "
             except Exception as e:
-                print(f"Erro ao extrair texto da página: {str(e)}")
                 continue
         
         if not texto_completo.strip():
-            print("Nenhum texto extraído do PDF")
             return None
             
         texto_completo = texto_completo.lower()
@@ -1566,7 +1461,6 @@ def identificar_tipo_pdf_por_palavras_chave(arquivo, estrutura):
         return melhor_match if melhor_score > 0 else None
         
     except Exception as e:
-        print(f"Erro ao identificar tipo por palavras-chave: {str(e)}")
         return None
 
 @app.route('/analisar_pdfs_organizar', methods=['POST'])
@@ -1841,7 +1735,6 @@ def organizar_pdfs_executar():
         # Salvar dados temporários para desfazer se houve operações realizadas
         if operacoes_realizadas:
             salvar_dados_desfazer(operacoes_realizadas)
-            logs.append(f"Dados de desfazer salvos para {len(operacoes_realizadas)} operações")
         
         return jsonify({
             'success': True,
@@ -1873,9 +1766,7 @@ def desfazer_ultima_operacao_route():
 def limpar_historico_invalido_route():
     """Rota para limpar operações inválidas do histórico"""
     try:
-        print("Iniciando limpeza do histórico inválido...")
         operacoes_removidas = limpar_historico_invalido()
-        print(f"Operações removidas: {operacoes_removidas}")
         
         if operacoes_removidas > 0:
             return jsonify({
@@ -1888,9 +1779,6 @@ def limpar_historico_invalido_route():
                 'message': 'Nenhuma operação inválida encontrada no histórico'
             })
     except Exception as e:
-        print(f"Erro na rota limpar_historico_invalido: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({
             'success': False,
             'message': f'Erro ao limpar histórico: {str(e)}'
@@ -1900,9 +1788,7 @@ def limpar_historico_invalido_route():
 def converter_historico_antigo_route():
     """Rota para converter histórico antigo para novo formato"""
     try:
-        print("Iniciando conversão do histórico antigo...")
         operacoes_convertidas = converter_historico_antigo()
-        print(f"Operações convertidas: {operacoes_convertidas}")
         
         if operacoes_convertidas > 0:
             return jsonify({
@@ -1915,9 +1801,6 @@ def converter_historico_antigo_route():
                 'message': 'Nenhuma operação antiga encontrada para converter'
             })
     except Exception as e:
-        print(f"Erro na rota converter_historico_antigo: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({
             'success': False,
             'message': f'Erro ao converter histórico: {str(e)}'
@@ -1930,19 +1813,15 @@ def visualizar_historico():
         historico = ler_historico()
         return render_template('visualizar_historico.html', historico=historico)
     except Exception as e:
-        print(f"Erro ao visualizar histórico: {str(e)}")
         return render_template('visualizar_historico.html', historico={}, erro=str(e))
 
 @app.route('/sair', methods=['POST'])
 def sair_aplicacao():
     """Encerra o aplicativo de forma segura"""
     try:
-        print("🔄 Encerrando aplicação...")
-        
         # Função para encerrar o servidor em uma thread separada
         def shutdown_server():
             time.sleep(1)  # Pequeno delay para permitir resposta ao cliente
-            print("👋 Aplicação encerrada com sucesso!")
             
             # Tentar encerrar de forma mais elegante primeiro
             try:
@@ -1963,7 +1842,6 @@ def sair_aplicacao():
         })
         
     except Exception as e:
-        print(f"Erro ao encerrar aplicação: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Erro ao encerrar aplicação: {str(e)}'
@@ -2001,23 +1879,11 @@ def buscar_cnpj_api():
             return jsonify({'success': False, 'message': 'CNPJ não encontrado na API'})
             
     except Exception as e:
-        print(f"Erro ao buscar CNPJ na API: {str(e)}")
         return jsonify({'success': False, 'message': f'Erro ao buscar CNPJ: {str(e)}'})
 
 def signal_handler(signum, frame):
     """Handler para capturar sinais de encerramento"""
-    print("\n🔄 Recebido sinal de encerramento...")
-    print("👋 Encerrando aplicação Pdf-Organizer...")
-    
-    # Limpeza final (se necessário)
-    try:
-        # Aqui você pode adicionar qualquer limpeza necessária
-        # Por exemplo, salvar dados, fechar conexões, etc.
-        pass
-    except Exception as e:
-        print(f"⚠️ Erro durante limpeza: {e}")
-    
-    print("✅ Aplicação encerrada com sucesso!")
+    print("\nEncerrando aplicação...")
     os._exit(0)
 
 if __name__ == '__main__':
@@ -2033,17 +1899,23 @@ if __name__ == '__main__':
     # Se o argumento --no-browser for passado, não abrir o navegador
     if '--no-browser' in sys.argv:
         abrir_browser = False
-        print("🚫 Navegador não será aberto automaticamente")
     
     if abrir_browser:
         threading.Thread(target=abrir_navegador).start()
     
-    print("🚀 Iniciando servidor Pdf-Organizer...")
-    print("📋 Acesse: http://localhost:5000")
-    print("💡 Pressione Ctrl+C para encerrar manualmente")
+    # Mensagem simples para o usuário
+    print("=" * 60)
+    print("PDF ORGANIZER - SERVIDOR")
+    print("=" * 60)
+    print("Este console é apenas o servidor do Pdf-Organizer.")
+    print("Abra o seguinte site para interagir com o sistema:")
+    print("")
+    print("    http://localhost:5000")
+    print("")
+    print("Caso feche este console, você deverá abrir o aplicativo novamente.")
+    print("=" * 60)
     
     try:
         app.run(debug=False, use_reloader=False)
     except KeyboardInterrupt:
-        print("\n🔄 Encerramento solicitado pelo usuário...")
         signal_handler(signal.SIGINT, None)

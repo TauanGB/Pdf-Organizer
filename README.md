@@ -182,10 +182,13 @@ Pdf-Organizer/
 ├── Clientes.json         # CNPJs cadastrados
 ├── estrutura.json        # Estruturas de organização
 ├── Historico.json        # Histórico de operações
+├── icone.ico             # Ícone do aplicativo
+├── trash-can.png         # Ícone alternativo
 ├── testes/               # Arquivos de teste (não incluídos no executável)
 ├── build/                # Arquivos de build (gerados automaticamente)
 ├── main.spec             # Configuração PyInstaller
-└── OrganizePDF.spec      # Configuração alternativa PyInstaller
+├── OrganizePDF.spec      # Configuração alternativa PyInstaller
+└── setup.py              # Configuração cx_Freeze
 ```
 
 ## 🎯 Características Técnicas
@@ -219,6 +222,12 @@ Pdf-Organizer/
 - Feedback visual em tempo real
 - Ícones intuitivos com Font Awesome
 - Encerramento elegante do aplicativo
+
+### Console Limpo e Profissional
+- **Interface limpa**: Console mostra apenas informações essenciais para o usuário
+- **Sem logs técnicos**: Logs de debug e requisições HTTP suprimidos
+- **Mensagem clara**: Indica que é o servidor e como acessar a interface web
+- **Configurável**: Código de supressão de logs pode ser facilmente comentado para debug
 
 ## 🚀 Criando o Executável
 
@@ -259,13 +268,21 @@ pyinstaller --onefile --name "Pdf-Organizer" app.py
 ### Configurações PyInstaller
 
 O projeto inclui arquivos de configuração:
-- `main.spec` - Configuração principal
-- `OrganizePDF.spec` - Configuração alternativa
+- `main.spec` - Configuração principal com ícone
+- `OrganizePDF.spec` - Configuração alternativa com ícone
 
 Para usar uma configuração específica:
 ```bash
 pyinstaller main.spec
 ```
+
+### Ícone do Aplicativo
+
+O projeto inclui um ícone personalizado:
+- **`icone.ico`** - Ícone do aplicativo (Windows)
+- **`trash-can.png`** - Ícone alternativo
+
+O ícone será aplicado automaticamente ao executável quando disponível.
 
 ## 🤝 Contribuição
 
@@ -274,6 +291,46 @@ pyinstaller main.spec
 3. Commit suas mudanças
 4. Push para a branch
 5. Abra um Pull Request
+
+## 🖥️ Console Limpo e Profissional
+
+### Características do Console
+O aplicativo foi configurado para mostrar um console limpo e profissional, sem logs técnicos desnecessários que possam confundir o usuário final.
+
+**O que o console mostra:**
+```
+============================================================
+PDF ORGANIZER - SERVIDOR
+============================================================
+Este console é apenas o servidor do Pdf-Organizer.
+Abra o seguinte site para interagir com o sistema:
+
+    http://localhost:5000
+
+Caso feche este console, você deverá abrir o aplicativo novamente.
+============================================================
+ * Debug mode: off
+```
+
+**O que foi suprimido:**
+- Logs de requisições HTTP (Werkzeug)
+- Mensagens de debug técnicas
+- Logs de processamento de PDFs
+- Mensagens de erro detalhadas
+
+### Para Desenvolvedores - Habilitando Logs
+Se precisar debugar problemas de rede ou ver logs técnicos, edite o arquivo `app.py` e comente a linha:
+
+```python
+# ATENÇÃO: Este código suprime os logs do Werkzeug para manter o console limpo
+# Se precisar debugar problemas de rede, comente esta linha
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
+```
+
+**Para habilitar logs completos:**
+```python
+# logging.getLogger("werkzeug").setLevel(logging.ERROR)
+```
 
 ## 🔧 Troubleshooting
 
