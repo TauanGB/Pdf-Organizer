@@ -37,13 +37,20 @@
                             <input type="text" class="form-control" id="diretorio" name="diretorio" 
                                    placeholder="Nenhum diretório selecionado" readonly>
                             <button type="button" class="btn btn-outline-primary" id="btnSelecionarDiretorio">
-                                <i class="bi bi-folder2-open me-2"></i>Selecionar
+                                <i class="bi bi-folder2-open me-2"></i>Selecionar Diretório
                             </button>
                             <button type="button" class="btn btn-outline-secondary" id="btnLimparDiretorio" style="display: none;">
                                 <i class="bi bi-x-lg"></i>
                             </button>
                         </div>
-                        <div class="form-text">Clique no botão para selecionar um diretório usando o sistema de arquivos</div>
+                        <div class="form-text">Clique no botão para abrir o seletor nativo de pastas do sistema</div>
+                        
+                        <!-- Alerta informativo -->
+                        <div class="alert alert-info alert-dismissible fade show mt-2" role="alert" id="alerta_selecao">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Dica:</strong> Se não aparecer uma janela nova, pressione <kbd>Win + Tab</kbd> e procure por uma janela com título "Selecionar Diretório para Análise de Estrutura".
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
                         
                         <!-- Informações do diretório selecionado -->
                         <div id="diretorioInfo" class="mt-3" style="display: none;">
@@ -157,107 +164,110 @@
 </div>
 
 <script>
-// Verificar se a File System Access API está disponível
-function isFileSystemAccessSupported() {
-    return 'showDirectoryPicker' in window;
-}
+// Função removida - agora usamos tkinter para seleção de diretório
 
-// Função para selecionar diretório usando File System Access API
+// Função para selecionar diretório usando tkinter (mesma abordagem da pasta matriz)
 async function selecionarDiretorio() {
     try {
-        // Verificar se a API está disponível
-        if (!isFileSystemAccessSupported()) {
-            alert('File System Access API não é suportada neste navegador. Use Chrome, Edge ou outro navegador moderno.');
-            return;
+        // Mostrar loading
+        const btnSelecionar = document.getElementById('btnSelecionarDiretorio');
+        const btnOriginalText = btnSelecionar.innerHTML;
+        btnSelecionar.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Selecionando...';
+        btnSelecionar.disabled = true;
+        
+        // Atualizar mensagem informativa
+        const alerta = document.getElementById('alerta_selecao');
+        if (alerta) {
+            alerta.innerHTML = `
+                <i class="bi bi-hourglass-split me-2"></i>
+                <strong>Abrindo janela de seleção...</strong> Se não aparecer uma janela nova, pressione <kbd>Win + Tab</kbd> e procure por uma janela com título "Selecionar Diretório para Análise de Estrutura".
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
         }
-
-        // Mostrar o seletor de diretório
-        const dirHandle = await window.showDirectoryPicker({
-            mode: 'read'
+        
+        // Fazer requisição para o backend que usará tkinter
+        const response = await fetch('/selecionar_diretorio_estrutura', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
         });
-
-        // Atualizar o campo de texto com o nome do diretório
-        const diretorioInput = document.getElementById('diretorio');
-        const diretorioHidden = document.getElementById('diretorio_hidden');
-        const btnAnalisar = document.getElementById('btnAnalisar');
         
-        // Armazenar informações do diretório
-        const diretorioInfo = {
-            name: dirHandle.name,
-            // Tentar obter o caminho relativo ou absoluto se possível
-            path: await getDirectoryPath(dirHandle)
-        };
+        const result = await response.json();
         
-        diretorioInput.value = diretorioInfo.name;
-        diretorioHidden.value = diretorioInfo.path || diretorioInfo.name;
+        // Restaurar botão
+        btnSelecionar.innerHTML = btnOriginalText;
+        btnSelecionar.disabled = false;
         
-        // Habilitar o botão de análise
-        btnAnalisar.disabled = false;
-        
-        // Mostrar feedback visual
-        diretorioInput.classList.add('is-valid');
-        
-        // Mostrar informações do diretório
-        const diretorioInfoDiv = document.getElementById('diretorioInfo');
-        const nomeDiretorio = document.getElementById('nomeDiretorio');
-        const caminhoDiretorio = document.getElementById('caminhoDiretorio');
-        const btnLimparDiretorio = document.getElementById('btnLimparDiretorio');
-        
-        nomeDiretorio.textContent = diretorioInfo.name;
-        caminhoDiretorio.textContent = diretorioInfo.path || 'Caminho não disponível';
-        diretorioInfoDiv.style.display = 'block';
-        btnLimparDiretorio.style.display = 'block';
-        
-        console.log('Diretório selecionado:', diretorioInfo);
-        
-    } catch (error) {
-        console.error('Erro ao selecionar diretório:', error);
-        
-        if (error.name === 'AbortError') {
-            // Usuário cancelou a seleção
-            console.log('Seleção de diretório cancelada pelo usuário');
-        } else {
-            alert('Erro ao selecionar diretório: ' + error.message);
+        // Restaurar mensagem informativa original
+        if (alerta) {
+            alerta.innerHTML = `
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Dica:</strong> Se não aparecer uma janela nova, pressione <kbd>Win + Tab</kbd> e procure por uma janela com título "Selecionar Diretório para Análise de Estrutura".
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
         }
-    }
-}
-
-// Função para tentar obter o caminho do diretório
-async function getDirectoryPath(dirHandle) {
-    try {
-        // Tentar obter o caminho usando a API de permissões
-        if ('queryPermission' in dirHandle) {
-            const permission = await dirHandle.queryPermission({ mode: 'read' });
-            if (permission === 'granted') {
-                // Para navegadores que suportam, tentar obter o caminho
-                if ('getDirectoryHandle' in window) {
-                    // Tentar construir o caminho navegando para cima
-                    const pathParts = [];
-                    let currentHandle = dirHandle;
-                    
-                    while (currentHandle && currentHandle.name) {
-                        pathParts.unshift(currentHandle.name);
-                        try {
-                            currentHandle = await currentHandle.getParent();
-                        } catch (e) {
-                            break;
-                        }
-                    }
-                    
-                    if (pathParts.length > 0) {
-                        return pathParts.join('/');
-                    }
-                }
+        
+        if (result.success) {
+            // Atualizar o campo de texto com o diretório selecionado
+            const diretorioInput = document.getElementById('diretorio');
+            const diretorioHidden = document.getElementById('diretorio_hidden');
+            const btnAnalisar = document.getElementById('btnAnalisar');
+            
+            // Extrair nome do diretório do caminho completo
+            const caminhoCompleto = result.diretorio;
+            const nomeDiretorio = caminhoCompleto.split(/[\\\/]/).pop();
+            
+            diretorioInput.value = nomeDiretorio;
+            diretorioHidden.value = caminhoCompleto;
+            
+            // Habilitar o botão de análise
+            btnAnalisar.disabled = false;
+            
+            // Mostrar feedback visual
+            diretorioInput.classList.add('is-valid');
+            
+            // Mostrar informações do diretório
+            const diretorioInfoDiv = document.getElementById('diretorioInfo');
+            const nomeDiretorioElement = document.getElementById('nomeDiretorio');
+            const caminhoDiretorioElement = document.getElementById('caminhoDiretorio');
+            const btnLimparDiretorio = document.getElementById('btnLimparDiretorio');
+            
+            nomeDiretorioElement.textContent = nomeDiretorio;
+            caminhoDiretorioElement.textContent = caminhoCompleto;
+            diretorioInfoDiv.style.display = 'block';
+            btnLimparDiretorio.style.display = 'block';
+            
+        } else {
+            // Mostrar mensagem de erro ou instrução
+            if (result.message.includes('Explorador do Windows foi aberto')) {
+                alert('Explorador do Windows foi aberto. Copie o caminho da pasta desejada e cole no campo de texto abaixo.');
+            } else {
+                alert('Erro ao selecionar diretório: ' + result.message);
             }
         }
         
-        // Se não conseguir obter o caminho, retorna apenas o nome
-        return dirHandle.name;
     } catch (error) {
-        console.warn('Não foi possível obter o caminho completo do diretório:', error);
-        return dirHandle.name;
+        // Restaurar botão em caso de erro
+        const btnSelecionar = document.getElementById('btnSelecionarDiretorio');
+        btnSelecionar.innerHTML = '<i class="bi bi-folder2-open me-2"></i>Selecionar Diretório';
+        btnSelecionar.disabled = false;
+        
+        // Restaurar mensagem informativa original
+        const alerta = document.getElementById('alerta_selecao');
+        if (alerta) {
+            alerta.innerHTML = `
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Dica:</strong> Se não aparecer uma janela nova, pressione <kbd>Win + Tab</kbd> e procure por uma janela com título "Selecionar Diretório para Análise de Estrutura".
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+        }
+        
+        alert('Erro ao selecionar diretório: ' + error.message);
     }
 }
+
+// Função removida - agora usamos tkinter para obter o caminho completo automaticamente
 
 function proximoPasso() {
     // Verificar se há estrutura disponível

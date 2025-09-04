@@ -40,37 +40,104 @@ def abrir_navegador():
         pass  # Silenciar erros de navegador
 
 def ler_clientes():
+    """Lê clientes do arquivo JSON filtrando entradas inválidas"""
     if os.path.exists(CLIENTES_JSON):
         try:
             with open(CLIENTES_JSON, 'r', encoding='utf-8') as f:
                 clientes = json.load(f)
                 # Se for lista de dicts, converte para {cnpj: nome}
                 if isinstance(clientes, list):
-                    return {c['cnpj']: c['nome'] for c in clientes if isinstance(c, dict) and 'cnpj' in c and 'nome' in c}
-                # Se for dict, tenta converter para lista
+                    return {c['cnpj']: c['nome'] for c in clientes if isinstance(c, dict) and 'cnpj' in c and 'nome' in c and c['cnpj'].strip()}
+                # Se for dict, filtra entradas inválidas
                 elif isinstance(clientes, dict):
-                    return clientes
-        except Exception:
+                    # Filtrar entradas com CNPJ vazio ou inválido
+                    clientes_validos = {}
+                    for cnpj, nome in clientes.items():
+                        if cnpj and cnpj.strip() and nome and nome.strip():
+                            clientes_validos[cnpj] = nome
+                    return clientes_validos
+        except Exception as e:
+            print(f"Erro ao ler arquivo de clientes: {e}")
             return {}
     return {}
 
-def salvar_cliente(cnpj, nome):
-    clientes = {}
-    if os.path.exists(CLIENTES_JSON):
-        try:
+def verificar_cnpj_ja_existe(cnpj):
+    """Verifica se um CNPJ já existe no arquivo de clientes"""
+    try:
+        # Normalizar o CNPJ para comparação
+        cnpj_limpo = re.sub(r'[^0-9]', '', cnpj)
+        
+        if os.path.exists(CLIENTES_JSON):
             with open(CLIENTES_JSON, 'r', encoding='utf-8') as f:
                 clientes = json.load(f)
-                if not isinstance(clientes, dict):
-                    clientes = {}
-        except Exception:
-            clientes = {}
-    else:
-        with open(CLIENTES_JSON, 'w', encoding='utf-8') as f:
-            json.dump({}, f, ensure_ascii=False, indent=2)
-    if not clientes.get(cnpj):
-        clientes[cnpj] = nome
-        with open(CLIENTES_JSON, 'w', encoding='utf-8') as f:
-            json.dump(clientes, f, ensure_ascii=False, indent=2)
+                if isinstance(clientes, dict):
+                    # Verificar se o CNPJ já existe (em qualquer formato)
+                    for cnpj_existente in clientes.keys():
+                        cnpj_existente_limpo = re.sub(r'[^0-9]', '', cnpj_existente)
+                        if cnpj_existente_limpo == cnpj_limpo:
+                            return True
+        return False
+    except Exception as e:
+        print(f"Erro ao verificar se CNPJ existe: {e}")
+        return False
+
+def salvar_cliente(cnpj, nome):
+    """Salva um cliente no arquivo JSON com tratamento de erros melhorado"""
+    try:
+        # Normalizar o CNPJ para o formato padrão (com formatação)
+        cnpj_limpo = re.sub(r'[^0-9]', '', cnpj)
+        if len(cnpj_limpo) == 14:
+            cnpj_formatado = f"{cnpj_limpo[:2]}.{cnpj_limpo[2:5]}.{cnpj_limpo[5:8]}/{cnpj_limpo[8:12]}-{cnpj_limpo[12:]}"
+        else:
+            print(f"CNPJ inválido (não tem 14 dígitos): {cnpj}")
+            return False
+        
+        clientes = {}
+        if os.path.exists(CLIENTES_JSON):
+            try:
+                with open(CLIENTES_JSON, 'r', encoding='utf-8') as f:
+                    clientes = json.load(f)
+                    if not isinstance(clientes, dict):
+                        clientes = {}
+            except Exception as e:
+                print(f"Erro ao ler arquivo de clientes: {e}")
+                clientes = {}
+        else:
+            # Criar diretório se não existir
+            os.makedirs(os.path.dirname(CLIENTES_JSON) if os.path.dirname(CLIENTES_JSON) else '.', exist_ok=True)
+            with open(CLIENTES_JSON, 'w', encoding='utf-8') as f:
+                json.dump({}, f, ensure_ascii=False, indent=2)
+        
+        # Verificar se o CNPJ já existe (em qualquer formato)
+        cnpj_ja_existe = False
+        for cnpj_existente in clientes.keys():
+            cnpj_existente_limpo = re.sub(r'[^0-9]', '', cnpj_existente)
+            if cnpj_existente_limpo == cnpj_limpo:
+                cnpj_ja_existe = True
+                print(f"CNPJ {cnpj_formatado} já existe no arquivo como {cnpj_existente} com nome: {clientes[cnpj_existente]}")
+                break
+        
+        if cnpj_ja_existe:
+            return False
+        
+        # Validar nome
+        if not nome or not nome.strip():
+            print(f"Nome vazio ou inválido para CNPJ {cnpj_formatado}: '{nome}'")
+            return False
+        
+        # Salvar o cliente no formato padronizado
+        clientes[cnpj_formatado] = nome
+        try:
+            with open(CLIENTES_JSON, 'w', encoding='utf-8') as f:
+                json.dump(clientes, f, ensure_ascii=False, indent=2)
+            print(f"Cliente salvo com sucesso: {cnpj_formatado} - {nome}")
+            return True
+        except Exception as e:
+            print(f"Erro ao salvar cliente {cnpj_formatado}: {e}")
+            return False
+    except Exception as e:
+        print(f"Erro geral ao salvar cliente {cnpj}: {e}")
+        return False
 
 def remover_cliente(cnpj):
     """Remove um cliente do arquivo JSON"""
@@ -294,15 +361,18 @@ def processar_pdf(pdf_file):
         return []
 
 def buscar_dados_empresa(cnpj_limpo):
-    """Busca dados da empresa na Brasil API"""
+    """Busca dados da empresa na Brasil API com tratamento de erros melhorado"""
     try:
         url = f"https://brasilapi.com.br/api/cnpj/v1/{cnpj_limpo}"
+        print(f"Buscando dados para CNPJ: {cnpj_limpo}")
         response = requests.get(url, timeout=10)
         
         if response.status_code == 200:
             dados = response.json()
+            nome_empresa = dados.get('razao_social', 'Nome não encontrado')
+            print(f"Dados encontrados para {cnpj_limpo}: {nome_empresa}")
             return {
-                'nome': dados.get('razao_social', 'Nome não encontrado'),
+                'nome': nome_empresa,
                 'nome_fantasia': dados.get('nome_fantasia', ''),
                 'situacao': dados.get('situacao_cadastral', ''),
                 'data_abertura': dados.get('data_inicio_atividade', ''),
@@ -321,8 +391,10 @@ def buscar_dados_empresa(cnpj_limpo):
                 }
             }
         else:
+            print(f"Erro na API para CNPJ {cnpj_limpo}: Status {response.status_code}")
             return None
     except Exception as e:
+        print(f"Erro ao buscar dados para CNPJ {cnpj_limpo}: {e}")
         return None
 
 def calcular_repeticoes_cnpjs(cnpjs_encontrados):
@@ -371,6 +443,7 @@ def calcular_repeticoes_cnpjs(cnpjs_encontrados):
         # Usa o primeiro contexto como principal
         resultado.append({
             'cnpj': dados['cnpj'],
+            'cnpj_limpo': cnpj_limpo_api,  # CNPJ sem formatação para uso no template
             'nome_sugerido': nome_empresa,
             'arquivo': ', '.join(dados['arquivos']),  # Lista todos os arquivos
             'contexto': dados['contextos'][0],  # Primeiro contexto
@@ -615,6 +688,56 @@ def selecionar_diretorio():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Erro ao selecionar diretório: {str(e)}'})
 
+@app.route('/selecionar_diretorio_estrutura', methods=['POST'])
+def selecionar_diretorio_estrutura():
+    """Abre diálogo para selecionar diretório para análise de estrutura"""
+    try:
+        # Tentar com tkinter
+        try:
+            # Criar janela tkinter básica
+            root = tk.Tk()
+            
+            # Configuração para garantir que apareça
+            root.withdraw()  # Ocultar janela principal
+            root.attributes('-topmost', True)  # Manter no topo
+            
+            # Abrir diálogo de seleção de diretório
+            diretorio = filedialog.askdirectory(
+                title="Selecionar Diretório para Análise de Estrutura",
+                initialdir=os.path.expanduser("~")
+            )
+            
+            # Destruir a janela tkinter
+            try:
+                root.quit()
+                root.destroy()
+            except:
+                pass
+            
+            # Processar o resultado
+            if diretorio:
+                return jsonify({'success': True, 'diretorio': diretorio})
+            else:
+                return jsonify({'success': False, 'message': 'Nenhum diretório selecionado'})
+                
+        except Exception as e:
+            # Se tkinter falhar, tentar método alternativo para Windows
+            if platform.system() == 'Windows':
+                try:
+                    # Abrir o explorador do Windows
+                    abrir_explorador_windows()
+                    return jsonify({
+                        'success': False, 
+                        'message': 'Explorador do Windows foi aberto. Copie o caminho da pasta desejada e cole no campo de texto acima.'
+                    })
+                except Exception as win_error:
+                    return jsonify({'success': False, 'message': f'Erro ao abrir explorador: {str(win_error)}. Use o campo de texto para inserir o caminho manualmente.'})
+            else:
+                return jsonify({'success': False, 'message': f'Tkinter não está disponível: {str(e)}. Use o campo de texto para inserir o caminho manualmente.'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erro ao selecionar diretório: {str(e)}'})
+
 @app.route('/salvar_matriz_manual', methods=['POST'])
 def salvar_matriz_manual():
     """Salva a matriz inserida manualmente"""
@@ -661,12 +784,53 @@ def analisar_cnpjs():
         elif 'salvar_cnpjs' in request.form:
             # Salvar CNPJs selecionados
             cnpjs_selecionados = request.form.getlist('cnpjs_selecionados')
+            print(f"Total de CNPJs selecionados para salvar: {len(cnpjs_selecionados)}")
             
-            for cnpj_formatado in cnpjs_selecionados:
+            salvos = 0
+            ja_existem = 0
+            erros = 0
+            detalhes_erros = []
+            detalhes_ja_existem = []
+            
+            for i, cnpj_formatado in enumerate(cnpjs_selecionados):
+                print(f"Processando CNPJ {i+1}/{len(cnpjs_selecionados)}: {cnpj_formatado}")
+                
                 nome = request.form.get(f'nome_{cnpj_formatado}', '').strip()
+                print(f"  Nome encontrado: '{nome}'")
+                
                 if nome:
                     # CNPJ já está formatado, salvar diretamente
-                    salvar_cliente(cnpj_formatado, nome)
+                    resultado = salvar_cliente(cnpj_formatado, nome)
+                    if resultado:
+                        salvos += 1
+                        print(f"  ✓ Salvo com sucesso")
+                    else:
+                        # Verificar se é porque já existe ou se é erro real
+                        if verificar_cnpj_ja_existe(cnpj_formatado):
+                            ja_existem += 1
+                            detalhes_ja_existem.append(f"CNPJ {cnpj_formatado}: já existe no sistema")
+                            print(f"  ℹ Já existe no sistema")
+                        else:
+                            erros += 1
+                            detalhes_erros.append(f"CNPJ {cnpj_formatado}: falha no salvamento")
+                            print(f"  ✗ Falha no salvamento")
+                else:
+                    erros += 1
+                    detalhes_erros.append(f"CNPJ {cnpj_formatado}: nome vazio")
+                    print(f"  ✗ Nome vazio")
+            
+            print(f"Resultado final: {salvos} salvos, {ja_existem} já existiam, {erros} erros")
+            
+            # Mostrar mensagem de resultado
+            if salvos > 0:
+                flash(f'{salvos} CNPJ(s) salvo(s) com sucesso!', 'success')
+            if ja_existem > 0:
+                flash(f'{ja_existem} CNPJ(s) já existiam no sistema e não foram duplicados.', 'info')
+            if erros > 0:
+                flash(f'{erros} CNPJ(s) não puderam ser salvos. Verifique os logs do console.', 'error')
+                print("Detalhes dos erros:")
+                for erro in detalhes_erros:
+                    print(f"  - {erro}")
             
             return redirect(url_for('cadastro_estrutura'))
     
@@ -1916,6 +2080,7 @@ if __name__ == '__main__':
     print("=" * 60)
     
     try:
-        app.run(debug=False, use_reloader=False)
+        #app.run(debug=False, use_reloader=False)
+        app.run(debug=True, use_reloader=False)
     except KeyboardInterrupt:
         signal_handler(signal.SIGINT, None)
